@@ -1,0 +1,307 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   NEXORA DESIGN TOKENS
+   Light theme : lavender neutrals + violet primary (portfolio identity)
+   Dark theme  : blue-tinted neutrals + blue primary
+   Rule: components use semantic tokens (bg-background, text-foreground,
+   bg-primary...) and never hard-coded colors, so both themes just work.
+   ========================================================================== */
+
+/* ---- Tokens that reference CSS variables (resolved at use-site) ---------- */
+@theme inline {
+  /* Typography: Inter only */
+  --font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: var(--font-sans);
+
+  /* Core semantic colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--link);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Status colors (order lifecycle: ordered / shipping / delivered) */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  /* Charts (admin dashboard) */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar (admin + account) */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Radius scale */
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.4);
+  --radius-4xl: calc(var(--radius) * 3);
+
+  /* Brand-colored glow, for primary CTAs only */
+  --shadow-glow: 0 8px 24px -6px
+    color-mix(in oklab, var(--primary) 45%, transparent);
+}
+
+/* ---- Static tokens (same in both themes) -------------------------------- */
+@theme {
+  /* Soft, layered shadows (violet-tinted): subtle in light, barely visible in dark */
+  --shadow-xs: 0 1px 2px 0 oklch(0.2 0.05 295 / 0.05);
+  --shadow-sm:
+    0 1px 3px 0 oklch(0.2 0.05 295 / 0.08),
+    0 1px 2px -1px oklch(0.2 0.05 295 / 0.06);
+  --shadow-md:
+    0 4px 12px -2px oklch(0.2 0.05 295 / 0.08),
+    0 2px 6px -2px oklch(0.2 0.05 295 / 0.06);
+  --shadow-lg:
+    0 12px 28px -6px oklch(0.2 0.05 295 / 0.12),
+    0 4px 10px -4px oklch(0.2 0.05 295 / 0.06);
+  --shadow-xl: 0 24px 48px -12px oklch(0.2 0.05 295 / 0.18);
+}
+
+/* ==========================================================================
+   LIGHT THEME (portfolio palette)
+   ========================================================================== */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --background: #f5f3ff;
+  --foreground: #1e1333;
+  --surface: #ede9fe; /* alternate sections */
+  --card: #ede9fe;
+  --card-foreground: #1e1333;
+  --popover: #f5f3ff;
+  --popover-foreground: #1e1333;
+
+  /* Brand: violet (white text on #7C3AED = ~5.7:1, AA) */
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --primary-foreground: #ffffff;
+  --link: #6d28d9; /* violet text on lavender: prices, links */
+
+  /* Neutrals */
+  --secondary: #ede9fe;
+  --secondary-foreground: #1e1333;
+  --muted: #ede9fe;
+  --muted-foreground: #7c6b9e;
+  --accent: #ede9fe; /* hover/selected tint */
+  --accent-foreground: #5b21b6; /* violet-800 */
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #ddd6fe;
+  --input: #c4b5fd; /* slightly stronger than border so fields stay visible */
+  --ring: #7c3aed;
+
+  /* Status */
+  --success: oklch(0.527 0.154 150.069); /* green-700 */
+  --success-soft: oklch(0.982 0.018 155.826); /* green-50 */
+  --warning: oklch(0.555 0.163 48.998); /* amber-700 */
+  --warning-soft: oklch(0.987 0.022 95.277); /* amber-50 */
+  --info: oklch(0.488 0.243 264.376); /* blue-700 */
+  --info-soft: oklch(0.97 0.014 254.604); /* blue-50 */
+
+  /* Charts */
+  --chart-1: #7c3aed; /* violet */
+  --chart-2: oklch(0.623 0.214 259.815); /* blue */
+  --chart-3: oklch(0.696 0.17 162.48); /* emerald */
+  --chart-4: oklch(0.769 0.188 70.08); /* amber */
+  --chart-5: #7c6b9e; /* muted violet-gray */
+
+  /* Shape */
+  --radius: 0.75rem;
+
+  /* Sidebar */
+  --sidebar: #ede9fe;
+  --sidebar-foreground: #1e1333;
+  --sidebar-primary: #7c3aed;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ddd6fe;
+  --sidebar-accent-foreground: #5b21b6;
+  --sidebar-border: #ddd6fe;
+  --sidebar-ring: #7c3aed;
+}
+
+/* ==========================================================================
+   DARK THEME (blue-tinted neutrals, blue primary)
+   ========================================================================== */
+.dark {
+  color-scheme: dark;
+
+  --background: oklch(0.15 0.01 260);
+  --foreground: oklch(0.97 0.003 260);
+  --surface: oklch(0.18 0.012 260);
+  --card: oklch(0.2 0.012 260);
+  --card-foreground: oklch(0.97 0.003 260);
+  --popover: oklch(0.22 0.012 260);
+  --popover-foreground: oklch(0.97 0.003 260);
+
+  /* Brand: blue */
+  --primary: oklch(0.546 0.245 262.881); /* blue-600, white text = AA */
+  --primary-hover: oklch(0.623 0.214 259.815); /* blue-500 */
+  --primary-foreground: oklch(0.985 0 0);
+  --link: oklch(0.707 0.165 254.624); /* blue-400: readable on dark */
+
+  --secondary: oklch(0.26 0.012 260);
+  --secondary-foreground: oklch(0.97 0.003 260);
+  --muted: oklch(0.26 0.012 260);
+  --muted-foreground: oklch(0.72 0.015 260);
+  --accent: oklch(0.27 0.045 262);
+  --accent-foreground: oklch(0.93 0.03 255);
+
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.623 0.214 259.815);
+
+  /* Status */
+  --success: oklch(0.792 0.209 151.711); /* green-400 */
+  --success-soft: oklch(0.792 0.209 151.711 / 15%);
+  --warning: oklch(0.828 0.189 84.429); /* amber-400 */
+  --warning-soft: oklch(0.828 0.189 84.429 / 15%);
+  --info: oklch(0.707 0.165 254.624); /* blue-400 */
+  --info-soft: oklch(0.707 0.165 254.624 / 15%);
+
+  /* Charts */
+  --chart-1: oklch(0.623 0.214 259.815); /* blue */
+  --chart-2: oklch(0.705 0.213 47.604); /* orange */
+  --chart-3: oklch(0.765 0.177 163.223); /* emerald */
+  --chart-4: oklch(0.828 0.189 84.429); /* amber */
+  --chart-5: oklch(0.709 0.01 56.259); /* stone */
+
+  /* Sidebar */
+  --sidebar: oklch(0.17 0.012 260);
+  --sidebar-foreground: oklch(0.97 0.003 260);
+  --sidebar-primary: oklch(0.546 0.245 262.881);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.27 0.045 262);
+  --sidebar-accent-foreground: oklch(0.93 0.03 255);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.623 0.214 259.815);
+}
+
+/* ==========================================================================
+   LAYOUT UTILITIES
+   page-container : consistent horizontal width + gutters on every page
+   section-y      : consistent vertical rhythm between page sections
+   ========================================================================== */
+@utility page-container {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+
+  @media (min-width: 40rem) {
+    padding-inline: 1.5rem;
+  }
+  @media (min-width: 64rem) {
+    padding-inline: 2rem;
+  }
+  @media (min-width: 96rem) {
+    max-width: 90rem;
+  }
+}
+
+@utility section-y {
+  padding-block: 3.5rem;
+
+  @media (min-width: 48rem) {
+    padding-block: 5rem;
+  }
+  @media (min-width: 64rem) {
+    padding-block: 6rem;
+  }
+}
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading tracking-tight text-balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 25%, transparent);
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  /* Respect users who ask for less motion */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
