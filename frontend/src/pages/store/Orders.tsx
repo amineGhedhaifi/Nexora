@@ -4,9 +4,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useOrders } from "@/hooks/useOrders";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Orders() {
   const { data: orders, isPending } = useOrders();
+  const { isAuthenticated } = useAuth();
 
   return (
     <section className="page-container py-10 sm:py-14">
@@ -49,10 +51,12 @@ export default function Orders() {
                 </li>
               ))}
             </ul>
-            <p className="mt-6 text-xs text-muted-foreground">
-              Orders are saved on this device. Clearing your browser data will
-              remove them from this list.
-            </p>
+            {!isAuthenticated && (
+              <p className="mt-6 text-xs text-muted-foreground">
+                Orders are saved on this device. Clearing your browser data will
+                remove them from this list.
+              </p>
+            )}
           </>
         )}
       </div>

@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Footer } from "@/components/layout/Footer";
 import { StoreNavbar } from "@/components/layout/StoreNavbar";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 export default function StoreLayout() {
   return (
@@ -13,6 +14,7 @@ export default function StoreLayout() {
         Skip to content
       </a>
       <StoreNavbar />
+      <ScrollToTop />
       <main id="main" className="flex-1">
         <Outlet />
       </main>

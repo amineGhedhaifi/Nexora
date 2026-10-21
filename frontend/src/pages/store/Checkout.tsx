@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, Info, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Info, ShoppingBag, AlertCircle } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -10,16 +10,18 @@ import { OrderSummary } from "@/components/checkout/OrderSummary";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { countries } from "@/data/countries";
 import { useCart } from "@/hooks/useCart";
-import { useCreateOrder } from "@/hooks/useCreateOrder";
+import { useCreateOrderApi } from "@/hooks/useCreateOrderApi";
+import { getErrorMessage } from "@/services/api";
+import { ordersService } from "@/services/orders.service";
 import {
   checkoutSchema,
   type CheckoutFormValues,
 } from "@/schemas/checkout.schema";
 
 export default function Checkout() {
-  const { items, subtotal, shipping, total, clearCart } = useCart();
+  const { items, subtotal, shipping, total, clearCart, isLoading: cartLoading } = useCart();
   const navigate = useNavigate();
-  const createOrder = useCreateOrder();
+  const createOrder = useCreateOrderApi();
 
   const {
     register,
@@ -49,22 +51,50 @@ export default function Checkout() {
   });
 
   const onSubmit = handleSubmit((values) => {
+    const customerName = `${values.firstName} ${values.lastName}`.trim();
+    const shippingAddress = [
+      values.address,
+      values.city,
+      values.postalCode,
+      values.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    const orderInput = {
+      customerName,
+      customerPhone: values.phone.trim(),
+      shippingAddress,
+      items: items.map(({ productId, quantity }) => ({ productId, quantity })),
+    };
+
     createOrder.mutate(
+      orderInput,
       {
-        items: items.map(({ productId, name, price, image, quantity }) => ({
-          productId,
-          name,
-          price,
-          image,
-          quantity,
-        })),
-        shippingInfo: values,
-        subtotal,
-        shippingCost: shipping,
-        total,
-      },
-      {
-        onSuccess: (order) => {
+        onSuccess: async (order) => {
+          // Store the order locally with form data for the success page
+          await ordersService.storeOrder(order, {
+            items: orderInput.items.map(({ productId, quantity }) => ({
+              productId,
+              name: items.find((i) => i.productId === productId)?.name ?? "",
+              price: items.find((i) => i.productId === productId)?.price ?? 0,
+              image: items.find((i) => i.productId === productId)?.image ?? null,
+              quantity,
+            })),
+            shippingInfo: {
+              firstName: values.firstName,
+              lastName: values.lastName,
+              email: values.email,
+              phone: values.phone,
+              address: values.address,
+              city: values.city,
+              postalCode: values.postalCode,
+              country: values.country,
+            },
+            subtotal,
+            shippingCost: shipping,
+            total,
+          });
           navigate(`/order-success/${order.id}`, { replace: true });
           clearCart();
         },
@@ -89,6 +119,10 @@ export default function Checkout() {
       </section>
     );
   }
+
+  const submitError = createOrder.isError
+    ? getErrorMessage(createOrder.error)
+    : null;
 
   return (
     <section className="page-container py-10 sm:py-14">
@@ -218,16 +252,17 @@ export default function Checkout() {
           <p className="flex items-start gap-3 rounded-xl bg-accent p-4 text-sm text-accent-foreground">
             <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             There is no online payment. Place your order and we'll take care of
-            the rest.
+            the rest. The final total is calculated by the server.
           </p>
 
-          {createOrder.isError && (
-            <p
+          {submitError && (
+            <div
               role="alert"
-              className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+              className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
             >
-              We couldn't place your order. Please try again.
-            </p>
+              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <p>{submitError}</p>
+            </div>
           )}
 
           <Button
@@ -235,6 +270,7 @@ export default function Checkout() {
             size="lg"
             className="w-full"
             loading={createOrder.isPending}
+            disabled={cartLoading || items.length === 0}
           >
             Place order
           </Button>
@@ -247,6 +283,11 @@ export default function Checkout() {
             shipping={shipping}
             total={total}
           />
+          {cartLoading && (
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              Loading cart...
+            </p>
+          )}
         </aside>
       </div>
     </section>

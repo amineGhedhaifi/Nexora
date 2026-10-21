@@ -1,6 +1,8 @@
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, PackageSearch } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { ArrowLeft, PackageSearch, Key } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { OrderSummary } from "@/components/checkout/OrderSummary";
 import { DeliveryDetails } from "@/components/orders/DeliveryDetails";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
@@ -21,9 +23,52 @@ function BackLink() {
   );
 }
 
+function TrackingTokenForm({ onSubmit }: { onSubmit: (token: string) => void }) {
+  const [token, setToken] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (token.trim()) {
+      onSubmit(token.trim());
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <label htmlFor="tracking-token" className="block text-sm font-medium">
+          Tracking Token
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id="tracking-token"
+            type="text"
+            placeholder="Enter your tracking token"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="flex-1 font-mono text-sm"
+            autoComplete="off"
+          />
+          <button type="submit" disabled={!token.trim()} className={buttonVariants({ size: "default" })}>
+            <Key className="size-4" />
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          You received this token when you placed your order as a guest.
+        </p>
+      </div>
+    </form>
+  );
+}
+
 export default function OrderDetails() {
   const { id } = useParams();
-  const { data: order, isPending } = useOrder(id);
+  const [, setSearchParams] = useSearchParams();
+  const { data: order, isPending, isError } = useOrder(id);
+
+  const handleTrackingTokenSubmit = (token: string) => {
+    setSearchParams({ trackingToken: token }, { replace: true });
+  };
 
   if (isPending) {
     return (
@@ -39,17 +84,19 @@ export default function OrderDetails() {
 
   if (!order) {
     return (
-      <section className="page-container section-y">
-        <EmptyState
-          icon={PackageSearch}
-          title="We couldn't find that order"
-          description="Orders are saved on the device you ordered from. If you ordered somewhere else, open the site there."
-          action={
-            <Link to="/orders" className={buttonVariants({ size: "lg" })}>
-              Back to orders
-            </Link>
-          }
-        />
+      <section className="page-container py-10 sm:py-14">
+        <div className="mx-auto max-w-md">
+          <EmptyState
+            icon={PackageSearch}
+            title="We couldn't find that order"
+            description={isError
+              ? "You don't have access to this order. If you placed this order as a guest, enter your tracking token below."
+              : "Orders are saved on the device you ordered from. If you placed this order as a guest on another device, enter your tracking token below."}
+            action={
+              <TrackingTokenForm orderId={id as string} onSubmit={handleTrackingTokenSubmit} />
+            }
+          />
+        </div>
       </section>
     );
   }

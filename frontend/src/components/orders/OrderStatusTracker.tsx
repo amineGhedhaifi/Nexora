@@ -13,7 +13,7 @@ type StepState = "complete" | "current" | "upcoming"
 
 /** Ordered → Shipping → Delivered. Vertical on mobile, horizontal from the sm breakpoint. */
 export function OrderStatusTracker({ status, className }: { status: OrderStatus; className?: string }) {
-  const currentIndex = getStatusIndex(status)
+  const currentIndex = Math.max(0, getStatusIndex(status))
   const lastIndex = ORDER_STATUSES.length - 1
 
   return (

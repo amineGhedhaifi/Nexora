@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { motion } from "motion/react";
-import { CheckCircle2, PackageSearch } from "lucide-react";
+import { CheckCircle2, PackageSearch, Key } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { OrderSummary } from "@/components/checkout/OrderSummary";
 import { OrderStatusBadge } from "@/components/orders/OrderStatusBadge";
@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { useOrder } from "@/hooks/useOrder";
 import { formatDate } from "@/lib/format";
 import { orderStatusMeta } from "@/lib/orders";
+import { ordersService } from "@/services/orders.service";
 
 function OrderSuccessSkeleton() {
   return (
@@ -46,7 +47,20 @@ export default function OrderSuccess() {
     );
   }
 
-  const { shippingInfo } = order;
+  // Defensive: ensure shippingInfo exists with fallbacks
+  const shippingInfo = order.shippingInfo ?? {
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    postalCode: "",
+    country: "",
+  };
+
+  // Get tracking token for guest orders (only available for orders placed on this device)
+  const trackingToken = ordersService.getTrackingToken?.(order.id);
 
   return (
     <section className="page-container py-10 sm:py-14">
@@ -86,6 +100,26 @@ export default function OrderSuccess() {
           </div>
         </motion.div>
 
+        {trackingToken && (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+            <div className="flex items-start gap-3">
+              <Key className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-semibold">Guest order — save your tracking token</p>
+                <p className="mt-1">
+                  You don't have an account. Use this token to look up your order later:
+                </p>
+                <code className="mt-2 inline-block break-all bg-amber-100 px-2 py-1 rounded font-mono text-xs">
+                  {trackingToken}
+                </code>
+                <p className="mt-2 text-xs">
+                  Keep this token safe. Anyone with this token can view your order details.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mt-10 rounded-2xl border bg-card p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Order status</h2>
@@ -94,7 +128,7 @@ export default function OrderSuccess() {
           <OrderStatusTracker status={order.status} className="mt-6" />
           <div className="mt-6 rounded-xl bg-accent p-4 text-sm text-accent-foreground">
             <p className="font-semibold">What happens next</p>
-            <p className="mt-1">{orderStatusMeta[order.status].nextStep}</p>
+            <p className="mt-1">{orderStatusMeta[order.status]?.nextStep ?? "Your order is being processed."}</p>
           </div>
         </div>
 

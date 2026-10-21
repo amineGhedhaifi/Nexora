@@ -9,5 +9,5 @@ const variants = {
 } as const
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  return <Badge variant={variants[status]}>{orderStatusMeta[status].label}</Badge>
+  return <Badge variant={variants[status] ?? "secondary"}>{orderStatusMeta[status]?.label ?? status}</Badge>
 }

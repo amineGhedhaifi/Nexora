@@ -2,6 +2,7 @@ import { Link, Outlet } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 const benefits = [
   "Follow every order from one place",
@@ -81,6 +82,7 @@ export default function AuthLayout() {
         <main className="flex flex-1 items-center justify-center px-6 pb-12">
           <div className="w-full max-w-md">
             <Logo className="mb-8 lg:hidden" />
+            <ScrollToTop />
             <Outlet />
           </div>
         </main>
