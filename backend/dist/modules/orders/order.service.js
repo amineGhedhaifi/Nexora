@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/app-error.js";
+import { randomBytes } from "node:crypto";
 export async function createOrder(data, userId) {
     // Combine duplicate product IDs into a single item.
     const quantities = new Map();
@@ -17,6 +18,7 @@ export async function createOrder(data, userId) {
             throw new AppError(400, "The total quantity for a product cannot exceed 100.");
         }
     }
+    const trackingToken = userId ? null : randomBytes(32).toString("hex");
     return prisma.$transaction(async (tx) => {
         // Fetch active products from the database.
         const products = await tx.product.findMany({
@@ -70,6 +72,7 @@ export async function createOrder(data, userId) {
         return tx.order.create({
             data: {
                 userId: userId ?? null,
+                trackingToken,
                 customerName: data.customerName,
                 customerPhone: data.customerPhone,
                 shippingAddress: data.shippingAddress,
@@ -94,4 +97,68 @@ export async function createOrder(data, userId) {
             },
         });
     });
+}
+export async function getOrderById(orderId, userId, trackingToken) {
+    const where = userId
+        ? { id: orderId, userId }
+        : { id: orderId, trackingToken: trackingToken ?? "" };
+    const order = await prisma.order.findFirst({
+        where,
+        include: {
+            items: {
+                include: {
+                    product: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                            imageUrl: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+    if (!order) {
+        throw new AppError(404, "Order not found.");
+    }
+    return order;
+}
+export async function getMyOrders(userId, query) {
+    const { page, limit } = query;
+    const skip = (page - 1) * limit;
+    const [orders, total] = await prisma.$transaction([
+        prisma.order.findMany({
+            where: { userId },
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+            include: {
+                items: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                slug: true,
+                                imageUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
+        }),
+        prisma.order.count({
+            where: { userId },
+        }),
+    ]);
+    return {
+        orders,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
 }

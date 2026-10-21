@@ -89,6 +89,7 @@ export const OrderItemScalarFieldEnum = {
 export const OrderScalarFieldEnum = {
     id: 'id',
     userId: 'userId',
+    trackingToken: 'trackingToken',
     status: 'status',
     totalAmount: 'totalAmount',
     customerName: 'customerName',

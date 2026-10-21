@@ -11,3 +11,10 @@ export const createOrderSchema = z.object({
         .min(1)
         .max(50),
 });
+export const orderIdSchema = z.object({
+    id: z.string().uuid(),
+});
+export const orderQuerySchema = z.object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(50).default(10),
+});
