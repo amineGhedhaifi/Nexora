@@ -70,6 +70,7 @@ export const ModelName = {
     CartItem: 'CartItem',
     Cart: 'Cart',
     Category: 'Category',
+    ContactMessage: 'ContactMessage',
     OrderItem: 'OrderItem',
     Order: 'Order',
     Product: 'Product',
@@ -106,6 +107,14 @@ export const CategoryScalarFieldEnum = {
     description: 'description',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
+};
+export const ContactMessageScalarFieldEnum = {
+    id: 'id',
+    name: 'name',
+    email: 'email',
+    topic: 'topic',
+    message: 'message',
+    createdAt: 'createdAt'
 };
 export const OrderItemScalarFieldEnum = {
     id: 'id',

@@ -1,18 +1,37 @@
+import { apiRequest, ApiError, ValidationApiError, type ValidationError } from "./api";
 import type { ContactFormValues } from "@/schemas/contact.schema";
 
-/**
- * Contact form submission.
- * Today: simulated, nothing is delivered.
- * Later: the Express API receives the message, emails it to the team and sends
- * the sender an automatic reply. Only this file changes.
- */
-
-const MOCK_LATENCY_MS = 800;
+export interface ContactTopic {
+  value: string;
+  label: string;
+}
 
 export const contactService = {
   async sendMessage(input: ContactFormValues): Promise<void> {
-    // TODO (backend): POST /api/contact
-    void input;
-    await new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY_MS));
+    await apiRequest("/contact", {
+      method: "POST",
+      body: input,
+    });
+  },
+
+  async getTopics(): Promise<ContactTopic[]> {
+    return apiRequest<ContactTopic[]>("/contact/topics");
   },
 };
+
+export function isContactApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError;
+}
+
+export function isContactValidationError(
+  error: unknown,
+): error is ValidationApiError {
+  return error instanceof ValidationApiError;
+}
+
+export function getValidationErrors(error: unknown): ValidationError[] {
+  if (error instanceof ValidationApiError) {
+    return error.errors;
+  }
+  return [];
+}

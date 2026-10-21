@@ -7,6 +7,15 @@
 *
 * 🟢 You can import this file directly.
 */
+export const ContactTopic = {
+    GENERAL_INQUIRY: 'GENERAL_INQUIRY',
+    PRODUCT_QUESTION: 'PRODUCT_QUESTION',
+    ORDER_SUPPORT: 'ORDER_SUPPORT',
+    SHIPPING_DELIVERY: 'SHIPPING_DELIVERY',
+    RETURNS_REFUNDS: 'RETURNS_REFUNDS',
+    TECHNICAL_ISSUE: 'TECHNICAL_ISSUE',
+    OTHER: 'OTHER'
+};
 export const OrderStatus = {
     PENDING: 'PENDING',
     CONFIRMED: 'CONFIRMED',

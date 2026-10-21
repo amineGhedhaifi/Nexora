@@ -1,0 +1,20 @@
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  topic     ContactTopic
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+enum ContactTopic {
+  GENERAL_INQUIRY
+  PRODUCT_QUESTION
+  ORDER_SUPPORT
+  SHIPPING_DELIVERY
+  RETURNS_REFUNDS
+  TECHNICAL_ISSUE
+  OTHER
+}

@@ -1,26 +1,88 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CheckCircle2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { contactDetails, contactTopics } from "@/data/contact";
+import { contactDetails } from "@/data/contact";
 import { useSendContactMessage } from "@/hooks/useSendContactMessage";
+import {
+  contactService,
+  getValidationErrors,
+  isContactValidationError,
+} from "@/services/contact.service";
 import {
   contactSchema,
   type ContactFormValues,
 } from "@/schemas/contact.schema";
 
+const NO_TOPICS: ContactTopic[] = [];
+
+function ContactTopicsSelect({
+  topics,
+  isPending,
+  isError,
+  ...fieldProps
+}: {
+  topics: ContactTopic[];
+  isPending: boolean;
+  isError: boolean;
+} & React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <Select {...fieldProps} disabled={isPending || isError || topics.length === 0}>
+      {isPending ? (
+        <option value="" disabled>
+          <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
+          Loading topics...
+        </option>
+      ) : isError ? (
+        <option value="" disabled>
+          Failed to load topics. Please refresh the page.
+        </option>
+      ) : topics.length === 0 ? (
+        <option value="" disabled>
+          No topics available
+        </option>
+      ) : (
+        <>
+          <option value="">Choose a topic</option>
+          {topics.map((topic) => (
+            <option key={topic.value} value={topic.value}>
+              {topic.label}
+            </option>
+          ))}
+        </>
+      )}
+    </Select>
+  );
+}
+
 export default function Contact() {
   const sendMessage = useSendContactMessage();
+
+  const {
+    data: topics = NO_TOPICS,
+    isPending: topicsPending,
+    isError: topicsError,
+    refetch: refetchTopics,
+  } = useQuery({
+    queryKey: ["contact-topics"],
+    queryFn: () => contactService.getTopics(),
+    staleTime: 10 * 60_000,
+  });
+
+  const canSubmit = topics.length > 0 && !topicsPending && !topicsError;
 
   const {
     register,
     handleSubmit,
     reset,
     getValues,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
@@ -35,7 +97,25 @@ export default function Contact() {
     ...register(name),
   });
 
-  const onSubmit = handleSubmit((values) => sendMessage.mutate(values));
+  const onSubmit = handleSubmit(async (values) => {
+    clearErrors();
+    try {
+      await sendMessage.mutateAsync(values);
+    } catch (error) {
+      if (isContactValidationError(error)) {
+        const validationErrors = getValidationErrors(error);
+        validationErrors.forEach((ve) => {
+          if (ve.field in values) {
+            setError(ve.field as keyof ContactFormValues, {
+              type: "server",
+              message: ve.message,
+            });
+          }
+        });
+      }
+      throw error;
+    }
+  });
 
   const sendAnother = () => {
     sendMessage.reset();
@@ -118,14 +198,29 @@ export default function Contact() {
                   htmlFor="contact-topic"
                   error={errors.topic?.message}
                 >
-                  <Select {...field("topic")}>
-                    <option value="">Choose a topic</option>
-                    {contactTopics.map((topic) => (
-                      <option key={topic} value={topic}>
-                        {topic}
-                      </option>
-                    ))}
-                  </Select>
+                  <ContactTopicsSelect
+                    topics={topics}
+                    isPending={topicsPending}
+                    isError={topicsError}
+                    {...field("topic")}
+                  />
+                  {(topicsError || topics.length === 0) && !topicsPending && (
+                    <p
+                      role="alert"
+                      className="mt-2 text-sm text-destructive flex items-center gap-2"
+                    >
+                      <AlertCircle className="size-4" aria-hidden="true" />
+                      <span>Unable to load topics. </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-0 h-auto text-sm"
+                        onClick={refetchTopics}
+                      >
+                        Retry
+                      </Button>
+                    </p>
+                  )}
                 </FormField>
 
                 <FormField
@@ -137,7 +232,7 @@ export default function Contact() {
                   <Textarea rows={6} {...field("message")} />
                 </FormField>
 
-                {sendMessage.isError && (
+                {sendMessage.isError && !isContactValidationError(sendMessage.error) && (
                   <p
                     role="alert"
                     className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
@@ -150,10 +245,21 @@ export default function Contact() {
                   type="submit"
                   size="lg"
                   loading={sendMessage.isPending}
+                  disabled={!canSubmit}
                   className="w-full sm:w-auto"
                 >
                   Send message
                 </Button>
+
+                {!canSubmit && !sendMessage.isPending && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    {topicsPending
+                      ? "Loading topics..."
+                      : topicsError
+                      ? "Unable to load topics. Please refresh the page."
+                      : "No topics available. Please try again later."}
+                  </p>
+                )}
               </form>
             )}
           </div>

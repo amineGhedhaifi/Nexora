@@ -23,6 +23,36 @@ export class ApiError extends Error {
   }
 }
 
+export interface ValidationError {
+  field: string;
+  message: string;
+}
+
+export class ValidationApiError extends ApiError {
+  readonly errors: ValidationError[];
+
+  constructor(message: string, status: number, errors: ValidationError[]) {
+    super(message, status);
+    this.name = "ValidationApiError";
+    this.errors = errors;
+  }
+}
+
+function isValidationErrorResponse(body: unknown): body is {
+  status: string;
+  message: string;
+  errors: ValidationError[];
+} {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "status" in body &&
+    "message" in body &&
+    "errors" in body &&
+    Array.isArray((body as Record<string, unknown>).errors)
+  );
+}
+
 const NETWORK_MESSAGE =
   "We couldn't reach the server. Check your connection and try again.";
 const SESSION_EXPIRED_MESSAGE =
@@ -92,7 +122,13 @@ export function setSessionListener(listener: SessionListener | null): void {
 async function toApiError(response: Response): Promise<ApiError> {
   const body = (await response.json().catch(() => null)) as {
     message?: unknown;
+    errors?: unknown;
   } | null;
+
+  if (isValidationErrorResponse(body)) {
+    return new ValidationApiError(body.message, response.status, body.errors);
+  }
+
   // Show the server's message for client errors; hide server-error internals
   const message =
     response.status < 500 &&
