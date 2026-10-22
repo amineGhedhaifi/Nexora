@@ -15,11 +15,10 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 
 const app = express();
 
-app.use(helmet());
-
 app.use(
-  "/uploads/products",
-  express.static(path.resolve(process.cwd(), "uploads", "products")),
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
 );
 
 app.use(
@@ -27,6 +26,11 @@ app.use(
     origin: "http://localhost:3000",
     credentials: true,
   }),
+);
+
+app.use(
+  "/uploads/products",
+  express.static(path.resolve(process.cwd(), "uploads", "products")),
 );
 
 app.use(express.json());

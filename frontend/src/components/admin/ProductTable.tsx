@@ -1,4 +1,4 @@
-import { ChevronUp, ChevronDown, Edit, Trash2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Edit, Trash2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductImage } from "@/components/shared/ProductImage";
@@ -12,10 +12,11 @@ interface Product {
   description: string;
   price: number;
   stock: number;
-  imageUrl: string;
+  imageUrl: string | null;
   isActive: boolean;
   categoryId: string;
   categoryName: string;
+  categorySlug: string;
   createdAt: string;
 }
 
@@ -27,8 +28,14 @@ interface ProductTableProps {
   sortOrder: "asc" | "desc";
 }
 
+const fallbackImage = (
+  <div className="size-14 rounded-lg bg-muted flex items-center justify-center">
+    <Package className="size-6 text-muted-foreground/50" aria-hidden="true" />
+  </div>
+);
+
 export function ProductTable({ products, onEdit, onDelete, sortBy, sortOrder }: ProductTableProps) {
-  const columns = [
+  const columns: Array<{ key: string; label: string; sortable?: boolean; minWidth: string }> = [
     { key: "image", label: "Image", minWidth: "56px" },
     { key: "name", label: "Product", sortable: true, minWidth: "180px" },
     { key: "categoryName", label: "Category", sortable: true, minWidth: "120px" },
@@ -37,7 +44,7 @@ export function ProductTable({ products, onEdit, onDelete, sortBy, sortOrder }: 
     { key: "isActive", label: "Status", minWidth: "100px" },
     { key: "createdAt", label: "Added", sortable: true, minWidth: "120px" },
     { key: "actions", label: "Actions", minWidth: "96px" },
-  ] as const;
+  ];
 
   const renderSortIcon = (key: string) => {
     if (sortBy !== key) return <ChevronDown className="size-3.5 text-muted-foreground/50" />;
@@ -67,6 +74,7 @@ export function ProductTable({ products, onEdit, onDelete, sortBy, sortOrder }: 
                   src={product.imageUrl}
                   alt={product.name}
                   className="size-14 rounded-lg object-cover"
+                  fallback={fallbackImage}
                 />
               </td>
               <td className="font-medium max-w-[200px] truncate">{product.name}</td>

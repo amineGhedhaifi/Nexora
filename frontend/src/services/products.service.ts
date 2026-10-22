@@ -2,7 +2,7 @@ import { resolveImageUrl } from "@/lib/image-url";
 import type { PaginatedResponse } from "@/types/api";
 import type { ProductQuery } from "@/types/catalog";
 import type { Product } from "@/types/product";
-import { ApiError, apiRequest } from "./api";
+import { ApiError, apiRequest, toApiError, tokenStore, refreshSession } from "./api";
 
 /**
  * Products from the Express API (public endpoints, no token).
@@ -230,5 +230,187 @@ export const productsService = {
       category: product.category?.slug,
     });
     return items.filter((item) => item.id !== product.id).slice(0, limit);
+  },
+};
+
+// ---- Admin product types ----------------------------------------------------
+
+export interface AdminProduct {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price: number;
+  stock: number;
+  imageUrl: string | null;
+  isActive: boolean;
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  createdAt: string;
+}
+
+interface AdminApiProduct {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price: string | number;
+  stock: number;
+  imageUrl: string | null;
+  isActive: boolean;
+  categoryId: string;
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  createdAt: string;
+}
+
+interface AdminApiProductList {
+  products?: AdminApiProduct[];
+  pagination?: ApiPagination;
+}
+
+function toAdminProduct(api: AdminApiProduct): AdminProduct {
+  const price = Number(api.price);
+  return {
+    id: api.id,
+    name: api.name,
+    slug: api.slug,
+    description: api.description,
+    price: Number.isFinite(price) ? price : 0,
+    stock: api.stock,
+    imageUrl: resolveImageUrl(api.imageUrl),
+    isActive: api.isActive,
+    categoryId: api.category.id,
+    categoryName: api.category.name,
+    categorySlug: api.category.slug,
+    createdAt: api.createdAt,
+  };
+}
+
+// ---- Admin requests ---------------------------------------------------------
+
+async function fetchAdminProductList(params: {
+  page: number;
+  limit: number;
+  category?: string;
+}): Promise<{ items: AdminProduct[]; pagination?: ApiPagination }> {
+  const search = new URLSearchParams({
+    page: String(params.page),
+    limit: String(params.limit),
+  });
+  if (params.category) search.set("category", params.category);
+
+  const raw = await apiRequest<unknown>(`/products/admin?${search.toString()}`, {
+    auth: true,
+  });
+  const payload = unwrap<AdminApiProductList>(raw);
+
+  return {
+    items: Array.isArray(payload.products)
+      ? payload.products.map(toAdminProduct)
+      : [],
+    pagination: payload.pagination,
+  };
+}
+
+/** Sends a multipart/form-data request for create/update product. */
+async function sendProductFormData(
+  path: string,
+  formData: FormData,
+  method: "POST" | "PATCH",
+): Promise<AdminApiProduct> {
+  const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+  const apiOrigin = baseUrl.replace(/\/+$/, "").replace(/\/api$/, "");
+  const url = `${apiOrigin}/api${path}`;
+
+  const token = tokenStore.get();
+  
+  const response = await fetch(url, {
+    method,
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  if (response.status === 401) {
+    const session = await refreshSession();
+    if (!session) throw new ApiError("Your session has expired. Please sign in again.", 401);
+    
+    const retryResponse = await fetch(url, {
+      method,
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${session.accessToken}`,
+      },
+      body: formData,
+    });
+    
+    if (!retryResponse.ok) {
+      const error = await toApiError(retryResponse);
+      throw error;
+    }
+    
+    const body = await retryResponse.json().catch(() => ({})) as { product?: AdminApiProduct };
+    if (!body.product) throw new ApiError("Unexpected response from server.", 500);
+    return body.product;
+  }
+
+  if (!response.ok) {
+    const error = await toApiError(response);
+    throw error;
+  }
+
+  const body = await response.json().catch(() => ({})) as { product?: AdminApiProduct };
+  if (!body.product) throw new ApiError("Unexpected response from server.", 500);
+  return body.product;
+}
+
+// ---- Admin service ----------------------------------------------------------
+
+export const adminProductsService = {
+  /** GET /api/products/admin - requires admin auth. Returns active and inactive products. */
+  async getProducts(params: {
+    page: number;
+    limit: number;
+    category?: string;
+  }): Promise<PaginatedResponse<AdminProduct>> {
+    const { items, pagination } = await fetchAdminProductList(params);
+    const total = pagination?.total ?? items.length;
+    const size = pagination?.limit ?? params.limit;
+    return {
+      items,
+      total,
+      page: pagination?.page ?? params.page,
+      pageSize: size,
+      totalPages: pagination?.totalPages ?? Math.max(1, Math.ceil(total / size)),
+    };
+  },
+
+  /** POST /api/products - requires admin auth. Accepts multipart/form-data. */
+  async createProduct(formData: FormData): Promise<AdminProduct> {
+    const apiProduct = await sendProductFormData("/products", formData, "POST");
+    return toAdminProduct(apiProduct);
+  },
+
+  /** PATCH /api/products/:id - requires admin auth. Accepts multipart/form-data. */
+  async updateProduct(id: string, formData: FormData): Promise<AdminProduct> {
+    const apiProduct = await sendProductFormData(`/products/${id}`, formData, "PATCH");
+    return toAdminProduct(apiProduct);
+  },
+
+  /** DELETE /api/products/:id - requires admin auth. */
+  async deleteProduct(id: string): Promise<void> {
+    await apiRequest<unknown>(`/products/${id}`, {
+      method: "DELETE",
+      auth: true,
+    });
   },
 };

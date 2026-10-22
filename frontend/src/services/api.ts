@@ -119,6 +119,8 @@ export function setSessionListener(listener: SessionListener | null): void {
 // Low-level request
 // ---------------------------------------------------------------------------
 
+export { toApiError };
+
 async function toApiError(response: Response): Promise<ApiError> {
   const body = (await response.json().catch(() => null)) as {
     message?: unknown;

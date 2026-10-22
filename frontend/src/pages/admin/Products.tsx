@@ -1,80 +1,113 @@
-import { useState } from "react";
-import { Plus, Search, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Search, ChevronDown, ChevronUp, Package, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ProductTable } from "@/components/admin/ProductTable";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { Pagination } from "@/components/ui/pagination";
+import { adminProductsService, type AdminProduct } from "@/services/products.service";
+import { categoriesService } from "@/services/categories.service";
+import { getErrorMessage } from "@/services/api";
 
-interface Product {
+interface Category {
   id: string;
   name: string;
   slug: string;
-  description: string;
-  price: number;
-  stock: number;
-  imageUrl: string;
-  isActive: boolean;
-  categoryId: string;
-  categoryName: string;
-  createdAt: string;
 }
 
-const mockProducts: Product[] = [
-  { id: "1", name: "Wireless Noise-Canceling Headphones", slug: "wireless-headphones", description: "Premium wireless headphones with active noise cancellation", price: 299.99, stock: 45, imageUrl: "/images/headphones.jpg", isActive: true, categoryId: "1", categoryName: "Electronics", createdAt: "2024-01-15" },
-  { id: "2", name: "Premium Leather Messenger Bag", slug: "leather-messenger-bag", description: "Handcrafted leather messenger bag for professionals", price: 249.00, stock: 23, imageUrl: "/images/bag.jpg", isActive: true, categoryId: "2", categoryName: "Accessories", createdAt: "2024-02-20" },
-  { id: "3", name: "Organic Cotton T-Shirt (3-pack)", slug: "organic-cotton-tshirt-3pack", description: "Soft organic cotton t-shirts in a 3-pack", price: 49.99, stock: 120, imageUrl: "/images/tshirt.jpg", isActive: true, categoryId: "3", categoryName: "Clothing", createdAt: "2024-03-10" },
-  { id: "4", name: "Stainless Steel Water Bottle", slug: "stainless-water-bottle", description: "Insulated stainless steel water bottle, keeps drinks cold for 24h", price: 29.99, stock: 89, imageUrl: "/images/bottle.jpg", isActive: true, categoryId: "4", categoryName: "Home & Kitchen", createdAt: "2024-04-05" },
-  { id: "5", name: "Bluetooth Mechanical Keyboard", slug: "bluetooth-mechanical-keyboard", description: "RGB backlit mechanical keyboard with Bluetooth 5.0", price: 149.99, stock: 34, imageUrl: "/images/keyboard.jpg", isActive: true, categoryId: "1", categoryName: "Electronics", createdAt: "2024-05-12" },
-  { id: "6", name: "Minimalist Desk Lamp", slug: "minimalist-desk-lamp", description: "Adjustable LED desk lamp with touch controls", price: 59.99, stock: 67, imageUrl: "/images/lamp.jpg", isActive: false, categoryId: "4", categoryName: "Home & Kitchen", createdAt: "2024-06-18" },
-  { id: "7", name: "Yoga Mat Premium", slug: "yoga-mat-premium", description: "Non-slip premium yoga mat with carrying strap", price: 39.99, stock: 156, imageUrl: "/images/yoga.jpg", isActive: true, categoryId: "5", categoryName: "Sports & Fitness", createdAt: "2024-07-22" },
-  { id: "8", name: "Ceramic Coffee Mug Set (4)", slug: "ceramic-coffee-mug-set", description: "Hand-glazed ceramic mugs, set of 4", price: 34.99, stock: 78, imageUrl: "/images/mugs.jpg", isActive: true, categoryId: "4", categoryName: "Home & Kitchen", createdAt: "2024-08-30" },
-];
-
-const categories = [
-  { id: "1", name: "Electronics" },
-  { id: "2", name: "Accessories" },
-  { id: "3", name: "Clothing" },
-  { id: "4", name: "Home & Kitchen" },
-  { id: "5", name: "Sports & Fitness" },
-];
-
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [sortBy, setSortBy] = useState<keyof Product>("name");
+  const [sortBy, setSortBy] = useState<keyof AdminProduct>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<AdminProduct | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const limit = 10;
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminProductsService.getProducts({
+        page,
+        limit,
+        category: categoryFilter || undefined,
+      });
+      setProducts(response.items);
+      setTotalPages(response.totalPages);
+      setTotalProducts(response.total);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [page, categoryFilter]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const cats = await categoriesService.getAll();
+      setCategories(cats.map((c) => ({ id: c.id, name: c.name, slug: c.slug })));
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchCategories();
+  }, [fetchCategories]);
 
   const filteredProducts = products
     .filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.slug.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = !categoryFilter || p.categoryId === categoryFilter;
       const matchesStatus = !statusFilter || (statusFilter === "active" ? p.isActive : !p.isActive);
-      return matchesSearch && matchesCategory && matchesStatus;
+      return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
       const aVal = a[sortBy];
       const bVal = b[sortBy];
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return sortOrder === "asc" ? -1 : 1;
+      if (bVal == null) return sortOrder === "asc" ? 1 : -1;
       if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
       if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
       return 0;
     });
 
-  const handleDelete = (product: Product) => {
+  const handleDelete = (product: AdminProduct) => {
     setDeleteConfirm(product);
   };
 
-  const confirmDelete = () => {
-    if (deleteConfirm) {
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    try {
+      await adminProductsService.deleteProduct(deleteConfirm.id);
       setProducts((prev) => prev.filter((p) => p.id !== deleteConfirm.id));
+      setTotalProducts((prev) => prev - 1);
       setDeleteConfirm(null);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -83,17 +116,24 @@ export default function ProductsPage() {
     setEditingProduct(null);
   };
 
-  const handleProductSave = (savedProduct: Product) => {
-    if (editingProduct) {
-      // Update existing product
-      setProducts((prev) =>
-        prev.map((p) => (p.id === editingProduct.id ? savedProduct : p))
-      );
-    } else {
-      // Add new product
-      setProducts((prev) => [savedProduct, ...prev]);
+  const handleProductSave = async (formData: FormData) => {
+    try {
+      if (editingProduct) {
+        await adminProductsService.updateProduct(editingProduct.id, formData);
+      } else {
+        await adminProductsService.createProduct(formData);
+      }
+      // Refresh the product list
+      fetchProducts();
+      handleFormClose();
+    } catch (err) {
+      setError(getErrorMessage(err));
+      throw err; // Re-throw so the dialog can handle it
     }
-    handleFormClose();
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   return (
@@ -108,6 +148,16 @@ export default function ProductsPage() {
           Add Product
         </Button>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-destructive bg-destructive/10 p-4 flex items-center gap-3" role="alert">
+          <AlertCircle className="size-5 text-destructive shrink-0" aria-hidden="true" />
+          <p className="text-sm text-destructive">{error}</p>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}>
+            Dismiss
+          </Button>
+        </div>
+      )}
 
       <div className="rounded-2xl border bg-card shadow-sm">
         <div className="p-4 border-b flex flex-col gap-4">
@@ -126,13 +176,13 @@ export default function ProductsPage() {
             <div className="flex-1 sm:flex-none min-w-0">
               <Select
                 value={categoryFilter}
-                onValueChange={setCategoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
                 className="w-full sm:w-[180px]"
                 aria-label="Filter by category"
               >
                 <option value="">All Categories</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option key={cat.id} value={cat.slug}>{cat.name}</option>
                 ))}
               </Select>
             </div>
@@ -140,7 +190,7 @@ export default function ProductsPage() {
             <div className="flex-1 sm:flex-none min-w-0">
               <Select
                 value={statusFilter}
-                onValueChange={setStatusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full sm:w-[150px]"
                 aria-label="Filter by status"
               >
@@ -155,7 +205,7 @@ export default function ProductsPage() {
               <div className="flex-1 min-w-0">
                 <Select
                   value={sortBy}
-                  onValueChange={setSortBy}
+                  onChange={(e) => setSortBy(e.target.value as keyof AdminProduct)}
                   className="w-full sm:w-[150px]"
                   aria-label="Sort by"
                 >
@@ -178,30 +228,50 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <ProductTable
-          products={filteredProducts}
-          onEdit={(product) => { setEditingProduct(product); setFormOpen(true); }}
-          onDelete={handleDelete}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-        />
-
-        {filteredProducts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-            <Package className="size-12 text-muted-foreground/50" aria-hidden="true" />
-            <h3 className="mt-4 text-lg font-medium">No products found</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {search || categoryFilter || statusFilter
-                ? "Try adjusting your search or filters"
-                : "Get started by adding your first product"}
-            </p>
-            {!search && !categoryFilter && !statusFilter && (
-              <Button className="mt-4" onClick={() => setFormOpen(true)}>
-                <Plus className="size-4 mr-2" aria-hidden="true" />
-                Add Product
-              </Button>
-            )}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
+            <span className="sr-only">Loading products...</span>
           </div>
+        ) : (
+          <>
+            <ProductTable
+              products={filteredProducts}
+              onEdit={(product) => { setEditingProduct(product); setFormOpen(true); }}
+              onDelete={handleDelete}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+            />
+
+            {filteredProducts.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                <Package className="size-12 text-muted-foreground/50" aria-hidden="true" />
+                <h3 className="mt-4 text-lg font-medium">No products found</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {search || categoryFilter || statusFilter
+                    ? "Try adjusting your search or filters"
+                    : "Get started by adding your first product"}
+                </p>
+                {!search && !categoryFilter && !statusFilter && (
+                  <Button className="mt-4" onClick={() => setFormOpen(true)}>
+                    <Plus className="size-4 mr-2" aria-hidden="true" />
+                    Add Product
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="border-t p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {filteredProducts.length} of {totalProducts} product{totalProducts !== 1 ? "s" : ""}
+                  </p>
+                  <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -221,6 +291,7 @@ export default function ProductsPage() {
         description={`Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         variant="destructive"
+        disabled={deleting}
       />
     </div>
   );

@@ -11,6 +11,7 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   variant?: "default" | "destructive";
+  disabled?: boolean;
 }
 
 export function ConfirmDialog({
@@ -22,6 +23,7 @@ export function ConfirmDialog({
   confirmText = "Confirm",
   cancelText = "Cancel",
   variant = "default",
+  disabled = false,
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -36,13 +38,14 @@ export function ConfirmDialog({
           <DialogDescription className="text-left text-sm">{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col sm:flex-row-reverse gap-3">
-          <Button variant="outline" onClick={onClose} disabled={open === false} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={onClose} disabled={disabled} className="w-full sm:w-auto">
             {cancelText}
           </Button>
           <Button
             variant={variant === "destructive" ? "destructive" : "primary"}
             onClick={onConfirm}
             autoFocus
+            disabled={disabled}
             className="w-full sm:w-auto"
           >
             {confirmText}

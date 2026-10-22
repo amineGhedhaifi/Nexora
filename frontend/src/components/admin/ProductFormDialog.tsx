@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Loader2, Image as ImageIcon, Upload, X, FileImage } from "lucide-react";
+import { Loader2, Upload, X, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,20 +14,6 @@ import { cn } from "@/lib/utils";
 interface Category {
   id: string;
   name: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  price: number;
-  stock: number;
-  imageUrl: string;
-  isActive: boolean;
-  categoryId: string;
-  categoryName: string;
-  createdAt: string;
 }
 
 interface ProductFormData {
@@ -45,7 +31,7 @@ interface ProductFormData {
 interface ProductFormDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave?: (product: Product) => void;
+  onSave?: (formData: FormData) => Promise<void>;
   product: {
     id: string;
     name: string;
@@ -53,7 +39,7 @@ interface ProductFormDialogProps {
     description: string;
     price: number;
     stock: number;
-    imageUrl: string;
+    imageUrl: string | null;
     categoryId: string;
     isActive: boolean;
   } | null;
@@ -78,6 +64,7 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
   const [submitting, setSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -89,7 +76,7 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
         description: product.description,
         price: product.price.toString(),
         stock: product.stock.toString(),
-        imageUrl: product.imageUrl,
+        imageUrl: product.imageUrl ?? "",
         imageFile: null,
         categoryId: product.categoryId,
         isActive: product.isActive,
@@ -100,6 +87,7 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
       setImagePreview(null);
     }
     setErrors({});
+    setApiError(null);
   }, [product, open]);
 
   const validate = (): boolean => {
@@ -110,7 +98,7 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
     if (!formData.price || parseFloat(formData.price) <= 0) newErrors.price = "Valid price is required";
     if (!formData.stock || parseInt(formData.stock) < 0) newErrors.stock = "Valid stock quantity is required";
     if (!formData.categoryId) newErrors.categoryId = "Category is required";
-    if (!formData.imageUrl.trim() && !formData.imageFile) newErrors.imageUrl = "Image is required";
+    if (!formData.imageUrl.trim() && !formData.imageFile && !product) newErrors.imageUrl = "Image is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -119,6 +107,7 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
+    setApiError(null);
     
     // Create FormData for file upload
     const formDataToSubmit = new FormData();
@@ -131,33 +120,18 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
     formDataToSubmit.append("isActive", formData.isActive.toString());
     if (formData.imageFile) {
       formDataToSubmit.append("image", formData.imageFile);
-    } else if (formData.imageUrl) {
-      formDataToSubmit.append("imageUrl", formData.imageUrl);
     }
+    // For updates, don't send imageUrl if no new image - the backend keeps the existing one
     
-    // In real app: await createProduct(formDataToSubmit) or updateProduct(id, formDataToSubmit)
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    // Create product object for local state update
-    const savedProduct: Product = {
-      id: product?.id || crypto.randomUUID(),
-      name: formData.name,
-      slug: formData.slug,
-      description: formData.description,
-      price: parseFloat(formData.price),
-      stock: parseInt(formData.stock),
-      imageUrl: formData.imageFile ? URL.createObjectURL(formData.imageFile) : formData.imageUrl,
-      categoryId: formData.categoryId,
-      categoryName: categories.find(c => c.id === formData.categoryId)?.name || "",
-      isActive: formData.isActive,
-      createdAt: product?.createdAt || new Date().toISOString().split("T")[0],
-    };
-    
-    setSubmitting(false);
-    if (onSave) {
-      onSave(savedProduct);
-    } else {
+    try {
+      await onSave?.(formDataToSubmit);
+      setSubmitting(false);
       onClose();
+    } catch (err) {
+      setSubmitting(false);
+      // Error is handled by the parent component via error state
+      // But we can also show a generic error here if needed
+      throw err;
     }
   };
 
@@ -241,6 +215,13 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 p-6 sm:p-6 lg:p-8">
+          {apiError && (
+            <div className="rounded-lg border border-destructive bg-destructive/10 p-3 flex items-center gap-2" role="alert">
+              <AlertCircle className="size-4 text-destructive shrink-0" aria-hidden="true" />
+              <p className="text-sm text-destructive">{apiError}</p>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Product Name"
@@ -336,7 +317,7 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
               <Select
                 id="product-category"
                 value={formData.categoryId}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, categoryId: value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, categoryId: e.target.value }))}
                 aria-invalid={!!errors.categoryId}
                 aria-describedby={errors.categoryId ? "product-category-error" : undefined}
               >
@@ -388,6 +369,11 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
                       src={imagePreview}
                       alt={formData.name || "Product preview"}
                       className="w-full aspect-square object-cover rounded-lg"
+                      fallback={
+                        <div className="w-full aspect-square bg-muted rounded-lg flex items-center justify-center">
+                          <Upload className="size-8 text-muted-foreground/50" aria-hidden="true" />
+                        </div>
+                      }
                     />
                     <Button
                       type="button"
@@ -440,7 +426,7 @@ export function ProductFormDialog({ open, onClose, onSave, product, categories }
             <Button type="button" variant="outline" onClick={onClose} disabled={submitting} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" loading={submitting} disabled={submitting} className="w-full sm:w-auto">
+            <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
               {submitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
