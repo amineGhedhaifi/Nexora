@@ -39,9 +39,10 @@ export async function getProducts(
   categorySlug: string | undefined,
   page: number,
   limit: number,
+  includeInactive = false,
 ) {
   const where = {
-    isActive: true,
+    ...(includeInactive ? {} : { isActive: true }),
     ...(categorySlug
       ? {
           category: {

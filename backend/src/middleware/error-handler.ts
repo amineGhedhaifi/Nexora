@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../utils/app-error.js";
+import { Prisma } from "../generated/prisma/client.js";
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof AppError) {
@@ -19,6 +20,17 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
         field: issue.path.join("."),
         message: issue.message,
       })),
+    });
+    return;
+  }
+
+  if (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === "P2002"
+  ) {
+    res.status(409).json({
+      status: "error",
+      message: "A record with this value already exists.",
     });
     return;
   }

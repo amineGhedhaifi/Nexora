@@ -7,6 +7,7 @@ import {
   productQuerySchema,
   productSlugParamsSchema,
   updateProductSchema,
+  adminProductQuerySchema,
 } from "./product.schemas.js";
 
 import {
@@ -29,6 +30,27 @@ export async function listProducts(
     const query = productQuerySchema.parse(req.query);
 
     const result = await getProducts(query.category, query.page, query.limit);
+
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listAdminProducts(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const query = adminProductQuerySchema.parse(req.query);
+
+    const result = await getProducts(
+      query.category,
+      query.page,
+      query.limit,
+      true,
+    );
 
     res.status(200).json(result);
   } catch (error) {

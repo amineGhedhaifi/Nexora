@@ -5,6 +5,7 @@ import {
   editProduct,
   getProduct,
   listProducts,
+  listAdminProducts,
   removeProduct,
 } from "./product.controller.js";
 
@@ -16,6 +17,7 @@ const router = Router();
 
 // Public routes
 router.get("/", listProducts);
+router.get("/admin", authenticate, authorize("ADMIN"), listAdminProducts);
 router.get("/:slug", getProduct);
 
 // Admin-only routes
