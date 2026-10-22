@@ -15,6 +15,10 @@ export function formatPrice(amount: number): string {
   return currencyFormatter.format(amount)
 }
 
+export function formatCurrency(amount: number): string {
+  return currencyFormatter.format(amount)
+}
+
 export function formatCompactNumber(value: number): string {
   return compactFormatter.format(value)
 }

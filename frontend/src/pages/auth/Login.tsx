@@ -1,7 +1,7 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { Link, Navigate, useLocation } from "react-router-dom";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -21,14 +21,23 @@ interface LoginLocationState {
 }
 
 export default function Login() {
-  const { isAuthenticated, isLoading, login } = useAuth();
+  const { isLoading, login } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const state = (location.state as LoginLocationState | null) ?? {};
   const from = state.from ?? "/";
 
   const signIn = useMutation({
     mutationFn: ({ email, password }: LoginFormValues) =>
       login(email, password),
+    onSuccess: (data) => {
+      // Redirect admin users to admin dashboard
+      if (data.user?.role === "ADMIN") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
+    },
   });
 
   const {
@@ -50,9 +59,6 @@ export default function Login() {
 
   // Don't flash the form while an existing session is being restored
   if (isLoading) return <PageSpinner label="Checking your session" />;
-
-  // Already signed in, or just signed in: leave the page
-  if (isAuthenticated) return <Navigate to={from} replace />;
 
   return (
     <>

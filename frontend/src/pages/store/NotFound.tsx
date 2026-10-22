@@ -1,7 +1,10 @@
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { buttonVariants } from "@/components/ui/button"
 
 export default function NotFound() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
   return (
     <section className="page-container section-y">
       <div className="mx-auto flex max-w-lg flex-col items-center text-center">
@@ -11,8 +14,8 @@ export default function NotFound() {
           The page you're looking for may have moved, or the link might be broken.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link to="/" className={buttonVariants({ size: "lg" })}>
-            Back to home
+          <Link to={isAdminRoute ? "/admin" : "/"} className={buttonVariants({ size: "lg" })}>
+            {isAdminRoute ? "Back to dashboard" : "Back to home"}
           </Link>
         </div>
       </div>

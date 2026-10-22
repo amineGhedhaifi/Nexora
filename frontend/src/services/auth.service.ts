@@ -9,6 +9,8 @@ import { apiRequest, refreshSession, tokenStore } from "./api";
  *   POST /auth/refresh   rotates the refresh cookie and returns a new access token
  *   POST /auth/logout    deletes the refresh session and clears the cookie
  *   GET  /auth/me        the current user (protected)
+ *   PUT  /auth/me        updates the current user's profile
+ *   PUT  /auth/me/password  changes the current user's password
  */
 
 interface Envelope<T> {
@@ -54,5 +56,22 @@ export const authService = {
       auth: true,
     });
     return response.data.user;
+  },
+
+  async updateProfile(input: { name: string; email: string }): Promise<User> {
+    const response = await apiRequest<Envelope<{ user: User }>>("/auth/me", {
+      method: "PUT",
+      body: input,
+      auth: true,
+    });
+    return response.data.user;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiRequest("/auth/me/password", {
+      method: "PUT",
+      body: { currentPassword, newPassword },
+      auth: true,
+    });
   },
 };

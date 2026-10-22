@@ -11,8 +11,14 @@ export interface AuthContextValue {
   register: (name: string, email: string, password: string) => Promise<User>;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
+  /** Alias for logout. */
+  signOut: () => Promise<void>;
   /** Manually refreshes the session. Returns the new access token, or null if signed out. */
   refreshAccessToken: () => Promise<string | null>;
+  /** Update the current user's profile. */
+  updateProfile: (input: { name: string; email: string }) => Promise<User>;
+  /** Change the current user's password. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

@@ -80,6 +80,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return session?.accessToken ?? null;
   }, [applySession]);
 
+  const updateProfile = useCallback(
+    async (input: { name: string; email: string }) => {
+      const updatedUser = await authService.updateProfile(input);
+      // Update the user in state with the new data
+      setUser((prev) => (prev ? { ...prev, ...updatedUser } : prev));
+      return updatedUser;
+    },
+    [],
+  );
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      await authService.changePassword(currentPassword, newPassword);
+    },
+    [],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -89,9 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       login,
       logout,
+      signOut: logout,
       refreshAccessToken,
+      updateProfile,
+      changePassword,
     }),
-    [user, accessToken, isLoading, register, login, logout, refreshAccessToken],
+    [user, accessToken, isLoading, register, login, logout, refreshAccessToken, updateProfile, changePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
