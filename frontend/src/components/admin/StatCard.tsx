@@ -1,11 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 interface StatCardProps {
   label: string;
-  value: string;
-  change: string;
-  changeType: "increase" | "decrease" | "neutral";
+  value: ReactNode;
+  change?: string;
+  changeType?: "increase" | "decrease" | "neutral";
   icon: LucideIcon;
 }
 
@@ -21,21 +22,23 @@ export function StatCard({ label, value, change, changeType, icon: Icon }: StatC
           <Icon className="size-5 sm:size-6" aria-hidden="true" />
         </span>
       </div>
-      <div className="mt-3 sm:mt-4 flex items-center gap-1.5">
-        <span
-          className={cn(
-            "text-sm font-medium whitespace-nowrap flex items-center gap-1",
-            changeType === "increase" && "text-success",
-            changeType === "decrease" && "text-destructive",
-            changeType === "neutral" && "text-muted-foreground",
-          )}
-        >
-          {changeType === "increase" && <ArrowUpRight className="size-3.5" aria-hidden="true" />}
-          {changeType === "decrease" && <ArrowDownRight className="size-3.5" aria-hidden="true" />}
-          {change}
-        </span>
-        <span className="text-sm text-muted-foreground whitespace-nowrap">vs last month</span>
-      </div>
+      {change && changeType && (
+        <div className="mt-3 sm:mt-4 flex items-center gap-1.5">
+          <span
+            className={cn(
+              "text-sm font-medium whitespace-nowrap flex items-center gap-1",
+              changeType === "increase" && "text-success",
+              changeType === "decrease" && "text-destructive",
+              changeType === "neutral" && "text-muted-foreground",
+            )}
+          >
+            {changeType === "increase" && <ArrowUpRight className="size-3.5" aria-hidden="true" />}
+            {changeType === "decrease" && <ArrowDownRight className="size-3.5" aria-hidden="true" />}
+            {change}
+          </span>
+          <span className="text-sm text-muted-foreground whitespace-nowrap">vs last month</span>
+        </div>
+      )}
     </div>
   );
 }
