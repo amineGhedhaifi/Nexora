@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { Truck, PackageCheck, Clock, XCircle, User, MapPin, Mail, Package } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { ProductImage } from "@/components/shared/ProductImage";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AdminOrderDetails, AdminOrderStatus } from "@/types/order";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface OrderDetailsDialogProps {
   open: boolean;
@@ -33,6 +34,14 @@ const nextStatus: Record<AdminOrderStatus, AdminOrderStatus | null> = {
   CANCELLED: null,
 };
 
+const canCancelStatus: Record<AdminOrderStatus, boolean> = {
+  PENDING: true,
+  CONFIRMED: true,
+  SHIPPED: false,
+  DELIVERED: false,
+  CANCELLED: false,
+};
+
 const statusTimeline = [
   { status: "PENDING" as AdminOrderStatus, label: "Order Placed" },
   { status: "CONFIRMED" as AdminOrderStatus, label: "Confirmed" },
@@ -43,23 +52,32 @@ const statusTimeline = [
 export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: OrderDetailsDialogProps) {
   const [activeTab, setActiveTab] = useState<"details" | "timeline">("details");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   if (!order) return null;
 
   const config = statusConfig[order.status];
   const next = nextStatus[order.status];
+  const canCancel = canCancelStatus[order.status];
+
+  const handleCancel = () => {
+    setShowCancelConfirm(false);
+    setUpdatingStatus(true);
+    onStatusUpdate(order, "CANCELLED");
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[90vh] sm:max-h-[90vh]">
-        <DialogHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="min-w-0">
-            <DialogTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-              <span className="font-mono truncate">{order.id}</span>
-              <Badge variant={config.variant} className="gap-1 whitespace-nowrap shrink-0">
-                {config.icon}
-                {config.label}
-              </Badge>
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[90vh] sm:max-h-[90vh]">
+          <DialogHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="min-w-0">
+              <DialogTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                <span className="font-mono truncate">{order.id}</span>
+                <Badge variant={config.variant} className="gap-1 whitespace-nowrap shrink-0">
+                  {config.icon}
+                  {config.label}
+                </Badge>
             </DialogTitle>
             <DialogDescription>Placed on {formatDate(order.createdAt)}</DialogDescription>
           </div>
@@ -207,6 +225,16 @@ export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: Ord
         </div>
 
         <DialogFooter className="border-t pt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
+          {canCancel && (
+            <Button
+              variant="destructive"
+              onClick={() => setShowCancelConfirm(true)}
+              disabled={updatingStatus}
+              className="w-full sm:w-auto"
+            >
+              Cancel Order
+            </Button>
+          )}
           {next && (
             <Button
               onClick={() => {
@@ -222,5 +250,17 @@ export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: Ord
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      <ConfirmDialog
+        open={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancel}
+        title="Cancel Order?"
+        description={`Are you sure you want to cancel order ${order.id}? This will restore stock for all items and cannot be undone.`}
+        confirmText="Yes, cancel order"
+        cancelText="Keep order"
+        variant="destructive"
+        disabled={updatingStatus}
+      />
+    </>
   );
 }

@@ -86,6 +86,7 @@ export const ContactMessageScalarFieldEnum = {
     email: 'email',
     topic: 'topic',
     message: 'message',
+    status: 'status',
     createdAt: 'createdAt'
 };
 export const OrderItemScalarFieldEnum = {

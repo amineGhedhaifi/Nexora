@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addOrder, getOrder, getMyOrderHistory, getAdminOrdersController, getAdminOrderByIdController, updateOrderStatusController, } from "./order.controller.js";
+import { addOrder, getOrder, getMyOrderHistory, getAdminOrdersController, getAdminOrderByIdController, updateOrderStatusController, cancelOrderController, } from "./order.controller.js";
 import { optionalAuthenticate } from "../../middleware/optional-authenticate.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { authorize } from "../../middleware/authorize.js";
@@ -12,4 +12,6 @@ router.patch("/admin/:id/status", authenticate, authorize("ADMIN"), updateOrderS
 router.post("/", optionalAuthenticate, addOrder);
 router.get("/", optionalAuthenticate, getMyOrderHistory);
 router.get("/:id", optionalAuthenticate, getOrder);
+// Customer cancel order
+router.patch("/:id/cancel", optionalAuthenticate, cancelOrderController);
 export default router;

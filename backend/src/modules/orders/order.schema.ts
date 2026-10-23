@@ -45,3 +45,7 @@ export type OrderIdInput = z.infer<typeof orderIdSchema>;
 export type OrderQueryInput = z.infer<typeof orderQuerySchema>;
 export type AdminOrderQueryInput = z.infer<typeof adminOrderQuerySchema>;
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
+
+export const cancelOrderSchema = orderIdSchema;
+
+export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;

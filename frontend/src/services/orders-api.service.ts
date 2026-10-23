@@ -153,6 +153,16 @@ export const ordersApiService = {
       pagination: response.pagination,
     };
   },
+
+  async cancelOrder(orderId: string, trackingToken?: string): Promise<OrderConfirmation> {
+    const token = tokenStore.get();
+    const queryParams = trackingToken ? `?trackingToken=${encodeURIComponent(trackingToken)}` : "";
+    const response = await apiRequest<GetOrderResponse>(`/orders/${orderId}/cancel${queryParams}`, {
+      method: "PATCH",
+      auth: !!token,
+    });
+    return toOrderConfirmation(response.order);
+  },
 };
 
 export function isOrderApiError(error: unknown): error is ApiError {

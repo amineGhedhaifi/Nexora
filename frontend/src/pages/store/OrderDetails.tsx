@@ -1,6 +1,6 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useState } from "react";
-import { ArrowLeft, PackageSearch, Key } from "lucide-react";
+import { ArrowLeft, PackageSearch, Key, XCircle } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OrderSummary } from "@/components/checkout/OrderSummary";
@@ -10,6 +10,10 @@ import { OrderStatusCard } from "@/components/orders/OrderStatusCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useOrder } from "@/hooks/useOrder";
 import { formatDate } from "@/lib/format";
+import { useCancelOrder } from "@/hooks/useCancelOrder";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { ordersService } from "@/services/orders.service";
 
 function BackLink() {
   return (
@@ -65,6 +69,22 @@ export default function OrderDetails() {
   const { id } = useParams();
   const [, setSearchParams] = useSearchParams();
   const { data: order, isPending, isError } = useOrder(id);
+  const { isAuthenticated } = useAuth()
+  const cancelOrder = useCancelOrder()
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+
+  const canCancel = order?.status === "ordered"
+
+  const handleCancel = async () => {
+    try {
+      const trackingToken = isAuthenticated ? undefined : ordersService.getTrackingToken(order!.id)
+      await cancelOrder.mutateAsync({ orderId: order!.id, trackingToken })
+    } catch (error) {
+      console.error("Failed to cancel order:", error)
+    } finally {
+      setShowCancelDialog(false)
+    }
+  }
 
   const handleTrackingTokenSubmit = (token: string) => {
     setSearchParams({ trackingToken: token }, { replace: true });
@@ -119,7 +139,33 @@ export default function OrderDetails() {
               })}
             </p>
           </div>
-          <OrderStatusBadge status={order.status} />
+          <div className="flex items-center gap-2">
+            <OrderStatusBadge status={order.status} />
+            {canCancel && (
+              <>
+                <button
+                  type="button"
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                  disabled={cancelOrder.isPending}
+                  onClick={() => setShowCancelDialog(true)}
+                >
+                  <XCircle className="size-4 mr-1" aria-hidden="true" />
+                  Cancel order
+                </button>
+                <ConfirmDialog
+                  open={showCancelDialog}
+                  onClose={() => setShowCancelDialog(false)}
+                  onConfirm={handleCancel}
+                  title="Cancel order?"
+                  description={`Are you sure you want to cancel order {order.id}? This action cannot be undone.`}
+                  confirmText="Yes, cancel order"
+                  cancelText="Keep order"
+                  variant="destructive"
+                  disabled={cancelOrder.isPending}
+                />
+              </>
+            )}
+          </div>
         </div>
 
         <OrderStatusCard status={order.status} className="mt-8" />

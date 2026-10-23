@@ -5,6 +5,7 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "ordered",
   "shipping",
   "delivered",
+  "cancelled",
 ];
 
 export const orderStatusMeta: Record<
@@ -27,6 +28,11 @@ export const orderStatusMeta: Record<
     label: "Delivered",
     description: "Your order has arrived.",
     nextStep: "Your order has been delivered. We hope you enjoy it!",
+  },
+  cancelled: {
+    label: "Cancelled",
+    description: "Your order has been cancelled.",
+    nextStep: "Your order has been cancelled. The items have been returned to stock.",
   },
 };
 

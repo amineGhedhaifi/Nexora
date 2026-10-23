@@ -7,6 +7,11 @@
 *
 * 🟢 You can import this file directly.
 */
+export const ContactMessageStatus = {
+    UNREAD: 'UNREAD',
+    READ: 'READ',
+    RESOLVED: 'RESOLVED'
+};
 export const ContactTopic = {
     GENERAL_INQUIRY: 'GENERAL_INQUIRY',
     PRODUCT_QUESTION: 'PRODUCT_QUESTION',

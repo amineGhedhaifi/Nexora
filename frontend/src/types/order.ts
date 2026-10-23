@@ -1,5 +1,5 @@
 /** The order lifecycle. The backend will own and update this later. */
-export type OrderStatus = "ordered" | "shipping" | "delivered";
+export type OrderStatus = "ordered" | "shipping" | "delivered" | "cancelled";
 
 /** Admin order statuses from the backend API. */
 export type AdminOrderStatus = "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";

@@ -1,8 +1,14 @@
 import { Link } from "react-router-dom"
-import { ArrowRight, Package } from "lucide-react"
+import { ArrowRight, Package, XCircle } from "lucide-react"
+import { useState } from "react"
 import { formatDate, formatPrice } from "@/lib/format"
 import type { Order } from "@/types/order"
 import { OrderStatusBadge } from "./OrderStatusBadge"
+import { useCancelOrder } from "@/hooks/useCancelOrder"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
+import { buttonVariants } from "@/components/ui/button"
+import { useAuth } from "@/hooks/useAuth"
+import { ordersService } from "@/services/orders.service"
 
 const MAX_PREVIEW = 4
 
@@ -10,6 +16,22 @@ export function OrderCard({ order }: { order: Order }) {
   const unitCount = order.items.reduce((sum, item) => sum + item.quantity, 0)
   const preview = order.items.slice(0, MAX_PREVIEW)
   const extra = order.items.length - preview.length
+  const { isAuthenticated } = useAuth()
+  const cancelOrder = useCancelOrder()
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+
+  const canCancel = order.status === "ordered"
+
+  const handleCancel = async () => {
+    try {
+      const trackingToken = isAuthenticated ? undefined : ordersService.getTrackingToken(order.id)
+      await cancelOrder.mutateAsync({ orderId: order.id, trackingToken })
+    } catch (error) {
+      console.error("Failed to cancel order:", error)
+    } finally {
+      setShowCancelDialog(false)
+    }
+  }
 
   return (
     <article className="group relative rounded-2xl border bg-card p-5 transition-shadow hover:shadow-md sm:p-6">
@@ -60,10 +82,37 @@ export function OrderCard({ order }: { order: Order }) {
         </div>
       </div>
 
-      <p className="mt-4 flex items-center gap-1 text-sm font-medium text-link">
-        View details
-        <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-      </p>
+      <div className="mt-4 flex items-center justify-between">
+        <p className="flex items-center gap-1 text-sm font-medium text-link">
+          View details
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+        </p>
+
+        {canCancel && (
+          <>
+            <button
+              type="button"
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+              disabled={cancelOrder.isPending}
+              onClick={() => setShowCancelDialog(true)}
+            >
+              <XCircle className="size-4 mr-1" aria-hidden="true" />
+              Cancel order
+            </button>
+            <ConfirmDialog
+              open={showCancelDialog}
+              onClose={() => setShowCancelDialog(false)}
+              onConfirm={handleCancel}
+              title="Cancel order?"
+              description={`Are you sure you want to cancel order {order.id}? This action cannot be undone.`}
+              confirmText="Yes, cancel order"
+              cancelText="Keep order"
+              variant="destructive"
+              disabled={cancelOrder.isPending}
+            />
+          </>
+        )}
+      </div>
     </article>
   )
 }

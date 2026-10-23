@@ -1,12 +1,20 @@
+enum ContactMessageStatus {
+  UNREAD
+  READ
+  RESOLVED
+}
+
 model ContactMessage {
-  id        String   @id @default(uuid())
+  id        String               @id @default(uuid())
   name      String
   email     String
   topic     ContactTopic
   message   String
-  createdAt DateTime @default(now())
+  status    ContactMessageStatus @default(UNREAD)
+  createdAt DateTime             @default(now())
 
   @@index([createdAt])
+  @@index([status, createdAt])
 }
 
 enum ContactTopic {

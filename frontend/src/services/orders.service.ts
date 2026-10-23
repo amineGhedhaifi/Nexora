@@ -95,7 +95,7 @@ function toFrontendOrder(apiOrder: OrderConfirmation, formData?: CreateOrderInpu
     CONFIRMED: "ordered",
     SHIPPED: "shipping",
     DELIVERED: "delivered",
-    CANCELLED: "ordered",
+    CANCELLED: "cancelled",
   };
 
   return {

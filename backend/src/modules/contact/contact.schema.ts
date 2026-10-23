@@ -20,3 +20,29 @@ export const createContactMessageSchema = z.object({
 export type CreateContactMessageInput = z.infer<
   typeof createContactMessageSchema
 >;
+
+export const contactMessageStatus = ["UNREAD", "READ", "RESOLVED"] as const;
+
+export const adminContactMessagesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+
+  search: z.string().trim().max(200).default(""),
+
+  status: z.enum(contactMessageStatus).optional(),
+
+  topic: z.enum(contactTopics).optional(),
+});
+
+export const updateContactMessageStatusSchema = z.object({
+  status: z.enum(contactMessageStatus),
+});
+
+export type AdminContactMessagesQuery = z.infer<
+  typeof adminContactMessagesQuerySchema
+>;
+
+export type UpdateContactMessageStatusInput = z.infer<
+  typeof updateContactMessageStatusSchema
+>;

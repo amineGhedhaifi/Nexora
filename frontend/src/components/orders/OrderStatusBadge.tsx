@@ -6,6 +6,7 @@ const variants = {
   ordered: "warning",
   shipping: "info",
   delivered: "success",
+  cancelled: "destructive",
 } as const
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {

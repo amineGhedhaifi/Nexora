@@ -14,6 +14,7 @@ import {
   getAdminOrders,
   getAdminOrderById,
   updateOrderStatus,
+  cancelOrder,
 } from "./order.service.js";
 import { AppError } from "../../utils/app-error.js";
 
@@ -136,6 +137,38 @@ export async function updateOrderStatusController(
 
     res.status(200).json({
       message: "Order status updated successfully.",
+      order,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function cancelOrderController(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { id } = orderIdSchema.parse(req.params);
+    const userId = req.auth?.userId;
+
+    const trackingToken =
+      typeof req.query.trackingToken === "string"
+        ? req.query.trackingToken
+        : undefined;
+
+    if (!userId && !trackingToken) {
+      throw new AppError(
+        401,
+        "Authentication or a tracking token is required.",
+      );
+    }
+
+    const order = await cancelOrder(id, userId, trackingToken);
+
+    res.status(200).json({
+      message: "Order cancelled successfully.",
       order,
     });
   } catch (error) {

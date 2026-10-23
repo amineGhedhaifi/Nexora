@@ -5,6 +5,7 @@ import type {
   OrderQueryInput,
   AdminOrderQueryInput,
   UpdateOrderStatusInput,
+  CancelOrderInput,
 } from "./order.schema.js";
 import { randomBytes } from "node:crypto";
 
@@ -338,6 +339,70 @@ export async function updateOrderStatus(
     return tx.order.update({
       where: { id: orderId },
       data: { status: nextStatus },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                imageUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  });
+}
+
+export async function cancelOrder(
+  orderId: string,
+  userId?: string,
+  trackingToken?: string,
+) {
+  const where = userId
+    ? { id: orderId, userId }
+    : { id: orderId, trackingToken: trackingToken ?? "" };
+
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({
+      where,
+      include: {
+        items: {
+          select: {
+            productId: true,
+            quantity: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new AppError(404, "Order not found.");
+    }
+
+    const allowedStatuses = ["PENDING", "CONFIRMED"];
+    if (!allowedStatuses.includes(order.status)) {
+      throw new AppError(
+        409,
+        `Cannot cancel order with status ${order.status}. Only pending or confirmed orders can be cancelled.`,
+      );
+    }
+
+    for (const item of order.items) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: { increment: item.quantity },
+        },
+      });
+    }
+
+    return tx.order.update({
+      where: { id: orderId },
+      data: { status: "CANCELLED" },
       include: {
         items: {
           include: {

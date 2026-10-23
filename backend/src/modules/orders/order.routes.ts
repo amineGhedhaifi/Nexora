@@ -6,6 +6,7 @@ import {
   getAdminOrdersController,
   getAdminOrderByIdController,
   updateOrderStatusController,
+  cancelOrderController,
 } from "./order.controller.js";
 import { optionalAuthenticate } from "../../middleware/optional-authenticate.js";
 import { authenticate } from "../../middleware/authenticate.js";
@@ -41,5 +42,8 @@ router.post("/", optionalAuthenticate, addOrder);
 router.get("/", optionalAuthenticate, getMyOrderHistory);
 
 router.get("/:id", optionalAuthenticate, getOrder);
+
+// Customer cancel order
+router.patch("/:id/cancel", optionalAuthenticate, cancelOrderController);
 
 export default router;

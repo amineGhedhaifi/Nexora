@@ -29,3 +29,4 @@ export const adminOrderQuerySchema = z.object({
 export const updateOrderStatusSchema = z.object({
     status: z.enum(["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"]),
 });
+export const cancelOrderSchema = orderIdSchema;
