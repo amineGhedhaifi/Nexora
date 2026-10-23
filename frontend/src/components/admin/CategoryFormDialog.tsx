@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { FormField } from "@/components/ui/form-field";
 interface CategoryFormDialogProps {
   open: boolean;
   onClose: () => void;
+  onSave?: (formData: { name: string; slug: string; description: string }) => Promise<void>;
   category: {
     id: string;
     name: string;
@@ -39,11 +40,14 @@ const initialFormData: CategoryFormData = {
 export function CategoryFormDialog({
   open,
   onClose,
+  onSave,
   category,
 }: CategoryFormDialogProps) {
   const [formData, setFormData] = useState<CategoryFormData>(initialFormData);
   const [errors, setErrors] = useState<Partial<CategoryFormData>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const slugManuallyEdited = useRef(false);
 
   useEffect(() => {
     if (category) {
@@ -53,10 +57,13 @@ export function CategoryFormDialog({
         slug: category.slug,
         description: category.description ?? "",
       });
+      slugManuallyEdited.current = false;
     } else {
       setFormData(initialFormData);
+      slugManuallyEdited.current = false;
     }
     setErrors({});
+    setApiError(null);
   }, [category, open]);
 
   const validate = (): boolean => {
@@ -74,19 +81,52 @@ export function CategoryFormDialog({
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setSubmitting(false);
-    onClose();
+    setApiError(null);
+
+    try {
+      await onSave?.({
+        name: formData.name.trim(),
+        slug: formData.slug.trim(),
+        description: formData.description.trim(),
+      });
+      setSubmitting(false);
+      onClose();
+    } catch (err) {
+      setSubmitting(false);
+      // Error is handled by the parent component via error state
+      // But we can also show a generic error here if needed
+      throw err;
+    }
   };
 
-  const generateSlug = () => {
-    const slug = formData.name
+  const generateSlug = (name: string) => {
+    const slug = name
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
     setFormData((prev) => ({ ...prev, slug }));
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setFormData((prev) => ({ ...prev, name: newName }));
+    // Auto-generate slug only if user hasn't manually edited it
+    if (!slugManuallyEdited.current) {
+      generateSlug(newName);
+    }
+  };
+
+  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, slug: e.target.value }));
+    slugManuallyEdited.current = true;
+  };
+
+  const handleBlur = () => {
+    if (!slugManuallyEdited.current) {
+      generateSlug(formData.name);
+    }
   };
 
   return (
@@ -104,6 +144,13 @@ export function CategoryFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 p-6">
+          {apiError && (
+            <div className="rounded-lg border border-destructive bg-destructive/10 p-3 flex items-center gap-2" role="alert">
+              <AlertCircle className="size-4 text-destructive shrink-0" aria-hidden="true" />
+              <p className="text-sm text-destructive">{apiError}</p>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               label="Category Name"
@@ -113,11 +160,8 @@ export function CategoryFormDialog({
               <Input
                 id="category-name"
                 value={formData.name}
-                onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, name: e.target.value }));
-                  if (!formData.slug || category === null) generateSlug();
-                }}
-                onBlur={generateSlug}
+                onChange={handleNameChange}
+                onBlur={handleBlur}
                 autoComplete="off"
                 aria-invalid={!!errors.name}
                 aria-describedby={errors.name ? "category-name-error" : undefined}
@@ -133,9 +177,7 @@ export function CategoryFormDialog({
               <Input
                 id="category-slug"
                 value={formData.slug}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, slug: e.target.value }))
-                }
+                onChange={handleSlugChange}
                 aria-invalid={!!errors.slug}
                 aria-describedby={errors.slug ? "category-slug-error" : undefined}
               />
@@ -170,7 +212,7 @@ export function CategoryFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" loading={submitting} disabled={submitting} className="w-full sm:w-auto">
+            <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
               {submitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
