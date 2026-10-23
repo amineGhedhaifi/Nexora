@@ -93,8 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string) => {
       await authService.changePassword(currentPassword, newPassword);
+      // Session is invalidated by backend; clear local state
+      applySession(null);
     },
-    [],
+    [applySession],
   );
 
   const value = useMemo<AuthContextValue>(

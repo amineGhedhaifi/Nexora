@@ -5,6 +5,7 @@ import {
   getMyOrderHistory,
   getAdminOrdersController,
   getAdminOrderByIdController,
+  getAdminOrdersByUserIdController,
   updateOrderStatusController,
   cancelOrderController,
 } from "./order.controller.js";
@@ -20,6 +21,13 @@ router.get(
   authenticate,
   authorize("ADMIN"),
   getAdminOrdersController,
+);
+
+router.get(
+  "/admin/user/:id",
+  authenticate,
+  authorize("ADMIN"),
+  getAdminOrdersByUserIdController,
 );
 
 router.get(

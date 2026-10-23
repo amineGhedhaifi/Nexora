@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
-import { LogOut, Package, User as UserIcon } from "lucide-react"
+import { LogOut, Package, User as UserIcon, UserCircle } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { useAuth } from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
@@ -63,6 +63,12 @@ export function AccountMenu() {
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
           <DropdownMenu.Separator className="my-1 h-px bg-border" />
+          <DropdownMenu.Item asChild>
+            <Link to="/profile" className={itemClass}>
+              <UserCircle className="size-4" aria-hidden="true" />
+              Profile
+            </Link>
+          </DropdownMenu.Item>
           <DropdownMenu.Item asChild>
             <Link to="/orders" className={itemClass}>
               <Package className="size-4" aria-hidden="true" />

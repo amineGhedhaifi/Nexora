@@ -13,6 +13,7 @@ import {
   getMyOrders,
   getAdminOrders,
   getAdminOrderById,
+  getOrdersByUserId,
   updateOrderStatus,
   cancelOrder,
 } from "./order.service.js";
@@ -119,6 +120,22 @@ export async function getAdminOrderByIdController(
     const order = await getAdminOrderById(id);
 
     res.status(200).json({ order });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminOrdersByUserIdController(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { id } = orderIdSchema.parse(req.params);
+    const query = adminOrderQuerySchema.parse(req.query);
+    const result = await getOrdersByUserId(id, query);
+
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }

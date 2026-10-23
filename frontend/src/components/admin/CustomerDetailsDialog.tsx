@@ -1,38 +1,13 @@
-import { X, User, Calendar, Package, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { User, Calendar, Package, DollarSign, Mail, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Customer } from "@/types/customer";
-
-interface Order {
-  id: string;
-  date: string;
-  total: number;
-  status: string;
-  items: number;
-}
-
-const mockCustomerOrders: Record<string, Order[]> = {
-  "1": [
-    { id: "NX-483920", date: "2024-12-15", total: 299.99, status: "DELIVERED", items: 1 },
-    { id: "NX-483915", date: "2024-12-10", total: 149.50, status: "DELIVERED", items: 2 },
-    { id: "NX-483908", date: "2024-11-28", total: 89.99, status: "DELIVERED", items: 1 },
-    { id: "NX-483902", date: "2024-11-15", total: 425.00, status: "DELIVERED", items: 2 },
-    { id: "NX-483895", date: "2024-11-02", total: 178.75, status: "DELIVERED", items: 3 },
-  ],
-  "2": [
-    { id: "NX-483919", date: "2024-12-15", total: 149.50, status: "SHIPPED", items: 3 },
-    { id: "NX-483912", date: "2024-12-05", total: 299.99, status: "DELIVERED", items: 1 },
-  ],
-  "4": [
-    { id: "NX-483917", date: "2024-12-14", total: 425.00, status: "DELIVERED", items: 2 },
-    { id: "NX-483911", date: "2024-12-08", total: 249.00, status: "DELIVERED", items: 1 },
-    { id: "NX-483904", date: "2024-11-20", total: 349.99, status: "DELIVERED", items: 2 },
-  ],
-};
+import { adminOrdersService } from "@/services/admin-orders.service";
+import type { AdminOrderSummary } from "@/types/order";
 
 interface CustomerDetailsDialogProps {
   open: boolean;
@@ -40,17 +15,56 @@ interface CustomerDetailsDialogProps {
   customer: Customer | null;
 }
 
+function StatCard({ icon: Icon, bgColor, textColor, label, value }: {
+  icon: React.ElementType;
+  bgColor: string;
+  textColor: string;
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="p-5 rounded-xl border bg-card">
+      <div className="flex flex-col items-center text-center">
+        <div className={cn("size-12 rounded-lg flex items-center justify-center", bgColor, textColor)}>
+          <Icon className="size-6" aria-hidden="true" />
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">{label}</p>
+        <p className="mt-1 text-3xl font-bold tabular-nums">{value}</p>
+      </div>
+    </div>
+  );
+}
+
 export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetailsDialogProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "orders">("overview");
-  const [ordersExpanded, setOrdersExpanded] = useState<Record<string, boolean>>({});
+  const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!customer || activeTab !== "orders") return;
+
+    const fetchOrders = async () => {
+      setOrdersLoading(true);
+      setOrdersError(null);
+      try {
+        const response = await adminOrdersService.getOrdersByUserId(customer.id);
+        setOrders(response.orders);
+      } catch (err) {
+        setOrdersError("Failed to load orders");
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [customer, activeTab]);
 
   if (!customer) return null;
 
-  const orders = mockCustomerOrders[customer.id] ?? [];
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh] no-close-button">
         <DialogHeader className="flex flex-row items-start justify-between gap-4">
           <div>
             <DialogTitle className="flex items-center gap-2">
@@ -61,9 +75,6 @@ export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetai
             </DialogTitle>
             <DialogDescription>Customer since {formatDate(customer.createdAt)}</DialogDescription>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-            <X className="size-5" />
-          </Button>
         </DialogHeader>
 
         <div className="border-y">
@@ -100,75 +111,43 @@ export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetai
             {activeTab === "overview" && (
               <div className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                        <Package className="size-5" aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Orders</p>
-                        <p className="text-2xl font-bold tabular-nums">{customer.totalOrders}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div className="grid size-10 place-items-center rounded-lg bg-success/10 text-success">
-                        <DollarSign className="size-5" aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Spent</p>
-                        <p className="text-2xl font-bold tabular-nums">{formatCurrency(customer.totalSpent)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div className="grid size-10 place-items-center rounded-lg bg-warning/10 text-warning">
-                        <Calendar className="size-5" aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Member Since</p>
-                        <p className="text-xl font-bold">{formatDate(customer.createdAt)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div className="grid size-10 place-items-center rounded-lg bg-info/10 text-info">
-                        <User className="size-5" aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Avg. Order Value</p>
-                        <p className="text-2xl font-bold tabular-nums">
-                          {customer.totalOrders > 0 ? formatCurrency(customer.totalSpent / customer.totalOrders) : "$0.00"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <StatCard
+                    icon={Package}
+                    bgColor="bg-primary/10"
+                    textColor="text-primary"
+                    label="Total Orders"
+                    value={customer.totalOrders}
+                  />
+                  <StatCard
+                    icon={DollarSign}
+                    bgColor="bg-success/10"
+                    textColor="text-success"
+                    label="Total Spent"
+                    value={formatCurrency(customer.totalSpent)}
+                  />
+                  <StatCard
+                    icon={Calendar}
+                    bgColor="bg-warning/10"
+                    textColor="text-warning"
+                    label="Member Since"
+                    value={formatDate(customer.createdAt)}
+                  />
+                  <StatCard
+                    icon={User}
+                    bgColor="bg-info/10"
+                    textColor="text-info"
+                    label="Avg. Order Value"
+                    value={customer.totalOrders > 0 ? formatCurrency(customer.totalSpent / customer.totalOrders) : "$0.00"}
+                  />
                 </div>
 
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Contact Information</h3>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="p-4 rounded-lg border">
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Name</label>
-                      <p className="font-medium">{customer.name}</p>
-                    </div>
-                    <div className="p-4 rounded-lg border">
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Email</label>
-                      <a href={`mailto:${customer.email}`} className="hover:underline">{customer.email}</a>
-                    </div>
-                    <div className="p-4 rounded-lg border">
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Role</label>
-                      <Badge variant={customer.role === "ADMIN" ? "destructive" : "neutral"}>
-                        {customer.role}
-                      </Badge>
-                    </div>
-                    <div className="p-4 rounded-lg border">
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Account Created</label>
-                      <p>{new Date(customer.createdAt).toLocaleString()}</p>
-                    </div>
+                    <InfoCard label="Name" value={customer.name} icon={User} />
+                    <InfoCard label="Email" value={customer.email} icon={Mail} isEmail={true} />
+                    <InfoCard label="Role" value={<Badge variant={customer.role === "ADMIN" ? "destructive" : "neutral"}>{customer.role}</Badge>} icon={Package} />
+                    <InfoCard label="Account Created" value={new Date(customer.createdAt).toLocaleString()} icon={Calendar} />
                   </div>
                 </div>
               </div>
@@ -176,70 +155,90 @@ export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetai
 
             {activeTab === "orders" && (
               <div>
-                {orders.length === 0 ? (
+                {ordersLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
+                    <span className="sr-only">Loading orders...</span>
+                  </div>
+                ) : ordersError ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Package className="size-12 text-destructive/50" aria-hidden="true" />
+                    <h3 className="mt-4 text-lg font-medium">Failed to load orders</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{ordersError}</p>
+                  </div>
+                ) : orders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Package className="size-12 text-muted-foreground/50" aria-hidden="true" />
                     <h3 className="mt-4 text-lg font-medium">No orders yet</h3>
                     <p className="mt-1 text-sm text-muted-foreground">This customer hasn't placed any orders</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {orders.map((order) => {
-                      const isExpanded = ordersExpanded[order.id];
-                      return (
-                        <div key={order.id} className="rounded-lg border overflow-hidden">
-                          <button
-                            onClick={() => setOrdersExpanded((prev) => ({ ...prev, [order.id]: !prev[order.id] }))}
-                            className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors text-left"
-                            aria-expanded={isExpanded}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-3">
-                                <span className="font-mono font-medium">{order.id}</span>
+                  <div className="rounded-lg border overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Order ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Items</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {orders.map((order) => (
+                            <tr key={order.id} className="hover:bg-accent/50 transition-colors">
+                              <td className="px-4 py-3 font-mono text-sm">{order.id}</td>
+                              <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(order.createdAt)}</td>
+                              <td className="px-4 py-3">
                                 <Badge variant={
                                   order.status === "DELIVERED" ? "success" :
                                   order.status === "SHIPPED" ? "warning" :
-                                  order.status === "PENDING" ? "info" : "destructive"
+                                  order.status === "PENDING" ? "info" :
+                                  order.status === "CONFIRMED" ? "info" : "destructive"
                                 }>
                                   {order.status}
                                 </Badge>
-                              </div>
-                              <div className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="size-3.5" aria-hidden="true" />
-                                  {formatDate(order.date)}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Package className="size-3.5" aria-hidden="true" />
-                                  {order.items} item{order.items !== 1 ? "s" : ""}
-                                </span>
-                                <span className="font-medium tabular-nums">{formatCurrency(order.total)}</span>
-                              </div>
-                            </div>
-                            {isExpanded ? <ChevronUp className="size-5 text-muted-foreground" /> : <ChevronDown className="size-5 text-muted-foreground" />}
-                          </button>
-
-                          {isExpanded && (
-                            <div className="px-4 pb-4 border-t bg-accent/30">
-                              <p className="text-sm text-muted-foreground">Order details would be loaded from the API here.</p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-muted-foreground">{order._count.items}</td>
+                              <td className="px-4 py-3 text-right font-medium tabular-nums">{formatCurrency(Number(order.totalAmount))}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
             )}
           </div>
         </div>
-
-        <DialogFooter className="border-t pt-4">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InfoCard({ label, value, icon: Icon, isEmail = false }: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ElementType;
+  isEmail?: boolean;
+}) {
+  return (
+    <div className="p-4 rounded-lg border bg-card/50">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <Icon className="size-4" aria-hidden="true" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">{label}</label>
+          {isEmail ? (
+            <a href={`mailto:${value}`} className="hover:underline block break-all">{value}</a>
+          ) : (
+            <div className="font-medium">{value}</div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

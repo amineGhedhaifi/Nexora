@@ -1,21 +1,30 @@
 import type { LoginFormValues, RegisterInput } from "@/schemas/auth.schema";
 import type { AuthSession, User } from "@/types/user";
-import { apiRequest, refreshSession, tokenStore } from "./api";
+import { apiRequest, refreshSession, tokenStore, setSessionListener } from "./api";
 
 /**
  * Authentication endpoints (Express + JWT).
- *   POST /auth/register  creates the account (no session is started)
- *   POST /auth/login     returns an access token; the server sets the httpOnly refresh cookie
- *   POST /auth/refresh   rotates the refresh cookie and returns a new access token
- *   POST /auth/logout    deletes the refresh session and clears the cookie
- *   GET  /auth/me        the current user (protected)
- *   PUT  /auth/me        updates the current user's profile
- *   PUT  /auth/me/password  changes the current user's password
+ *   POST /auth/register     creates the account (no session is started)
+ *   POST /auth/login        returns an access token; the server sets the httpOnly refresh cookie
+ *   POST /auth/refresh      rotates the refresh cookie and returns a new access token
+ *   POST /auth/logout       deletes the refresh session and clears the cookie
+ *   GET  /auth/me           the current user (protected)
+ *   PATCH /profile/me       updates the current user's profile
+ *   PATCH /profile/me/password  changes the current user's password (invalidates sessions)
  */
 
 interface Envelope<T> {
   status: string;
   data: T;
+}
+
+interface ProfileResponse {
+  message: string;
+  profile: User;
+}
+
+interface PasswordChangeResponse {
+  message: string;
 }
 
 export const authService = {
@@ -59,19 +68,24 @@ export const authService = {
   },
 
   async updateProfile(input: { name: string; email: string }): Promise<User> {
-    const response = await apiRequest<Envelope<{ user: User }>>("/auth/me", {
-      method: "PUT",
+    const response = await apiRequest<Envelope<ProfileResponse>>("/profile/me", {
+      method: "PATCH",
       body: input,
       auth: true,
     });
-    return response.data.user;
+    return response.data.profile;
   },
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await apiRequest("/auth/me/password", {
-      method: "PUT",
+    await apiRequest<Envelope<PasswordChangeResponse>>("/profile/me/password", {
+      method: "PATCH",
       body: { currentPassword, newPassword },
       auth: true,
     });
+    // Backend invalidates refresh sessions; clear local auth state
+    tokenStore.set(null);
+    setSessionListener(null);
+    // The AuthProvider's session listener will be called with null by the API client
+    // when the 401 is encountered on the next request, but we proactively clear here.
   },
 };

@@ -114,6 +114,24 @@ export const adminOrdersService = {
     };
   },
 
+  /** GET /api/orders/admin/user/:id - requires admin auth. Returns paginated orders for a specific user. */
+  async getOrdersByUserId(userId: string, query: AdminOrdersQuery = {}): Promise<AdminOrdersResponse> {
+    const searchParams = new URLSearchParams();
+    if (query.page) searchParams.set("page", String(query.page));
+    if (query.limit) searchParams.set("limit", String(query.limit));
+    if (query.status) searchParams.set("status", query.status);
+    if (query.search) searchParams.set("search", query.search);
+
+    const response = await apiRequest<AdminOrdersResponseApi>(`/orders/admin/user/${userId}?${searchParams.toString()}`, {
+      auth: true,
+    });
+
+    return {
+      orders: response.orders.map(toAdminOrderSummary),
+      pagination: response.pagination,
+    };
+  },
+
   /** GET /api/orders/admin/:id - requires admin auth. Returns full order details with items. */
   async getOrderById(orderId: string): Promise<AdminOrderDetails> {
     const response = await apiRequest<{ order: AdminOrderDetailsApi }>(`/orders/admin/${orderId}`, {

@@ -283,6 +283,56 @@ export async function getAdminOrderById(orderId: string) {
   return order;
 }
 
+export async function getOrdersByUserId(userId: string, query: AdminOrderQueryInput) {
+  const { page, limit, status, search } = query;
+  const skip = (page - 1) * limit;
+
+  const where = {
+    userId,
+    ...(status && { status }),
+    ...(search && {
+      OR: [
+        { customerName: { contains: search, mode: "insensitive" as const } },
+        { customerPhone: { contains: search } },
+        { id: { contains: search } },
+      ],
+    }),
+  };
+
+  const [orders, total] = await prisma.$transaction([
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        status: true,
+        totalAmount: true,
+        customerName: true,
+        customerPhone: true,
+        shippingAddress: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: { items: true },
+        },
+      },
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  return {
+    orders,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
 export async function updateOrderStatus(
   orderId: string,
   data: UpdateOrderStatusInput,
