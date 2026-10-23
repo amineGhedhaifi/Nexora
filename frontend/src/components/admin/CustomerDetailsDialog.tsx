@@ -5,16 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  role: "CLIENT" | "ADMIN";
-  createdAt: string;
-  orderCount: number;
-  totalSpent: number;
-}
+import type { Customer } from "@/types/customer";
 
 interface Order {
   id: string;
@@ -64,7 +55,7 @@ export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetai
           <div>
             <DialogTitle className="flex items-center gap-2">
               {customer.name}
-              <Badge variant={customer.role === "ADMIN" ? "destructive" : "secondary"} className="ml-2">
+              <Badge variant={customer.role === "ADMIN" ? "destructive" : "neutral"} className="ml-2">
                 {customer.role}
               </Badge>
             </DialogTitle>
@@ -101,7 +92,7 @@ export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetai
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              Orders ({customer.orderCount})
+              Orders ({customer.totalOrders})
             </button>
           </div>
 
@@ -116,7 +107,7 @@ export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetai
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Total Orders</p>
-                        <p className="text-2xl font-bold tabular-nums">{customer.orderCount}</p>
+                        <p className="text-2xl font-bold tabular-nums">{customer.totalOrders}</p>
                       </div>
                     </div>
                   </div>
@@ -150,7 +141,7 @@ export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetai
                       <div>
                         <p className="text-sm text-muted-foreground">Avg. Order Value</p>
                         <p className="text-2xl font-bold tabular-nums">
-                          {customer.orderCount > 0 ? formatCurrency(customer.totalSpent / customer.orderCount) : "$0.00"}
+                          {customer.totalOrders > 0 ? formatCurrency(customer.totalSpent / customer.totalOrders) : "$0.00"}
                         </p>
                       </div>
                     </div>
@@ -170,7 +161,7 @@ export function CustomerDetailsDialog({ open, onClose, customer }: CustomerDetai
                     </div>
                     <div className="p-4 rounded-lg border">
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Role</label>
-                      <Badge variant={customer.role === "ADMIN" ? "destructive" : "secondary"}>
+                      <Badge variant={customer.role === "ADMIN" ? "destructive" : "neutral"}>
                         {customer.role}
                       </Badge>
                     </div>

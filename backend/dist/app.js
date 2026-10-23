@@ -11,6 +11,7 @@ import cartRoutes from "./modules/cart/cart.routes.js";
 import orderRoutes from "./modules/orders/order.routes.js";
 import contactRoutes from "./modules/contact/contact.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
+import customerRoutes from "./modules/customers/customer.routes.js";
 const app = express();
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -35,5 +36,6 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/customers", customerRoutes);
 app.use(errorHandler);
 export default app;
