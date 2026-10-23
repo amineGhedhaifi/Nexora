@@ -1,5 +1,5 @@
 import { AppError } from "../../utils/app-error.js";
-import { createProductSchema, productParamsSchema, productQuerySchema, productSlugParamsSchema, updateProductSchema, } from "./product.schemas.js";
+import { createProductSchema, productParamsSchema, productQuerySchema, productSlugParamsSchema, updateProductSchema, adminProductQuerySchema, } from "./product.schemas.js";
 import { createProduct, deleteProduct, getProductBySlug, getProducts, updateProduct, } from "./product.service.js";
 import { processProductImage } from "../../middleware/upload-product-image.js";
 import { deleteProductImage } from "../../utils/product-image.js";
@@ -7,6 +7,16 @@ export async function listProducts(req, res, next) {
     try {
         const query = productQuerySchema.parse(req.query);
         const result = await getProducts(query.category, query.page, query.limit);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+}
+export async function listAdminProducts(req, res, next) {
+    try {
+        const query = adminProductQuerySchema.parse(req.query);
+        const result = await getProducts(query.category, query.page, query.limit, true);
         res.status(200).json(result);
     }
     catch (error) {

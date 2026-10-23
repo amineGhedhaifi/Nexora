@@ -135,6 +135,7 @@ export const getRecentOrders = async () => {
         },
         select: {
             id: true,
+            userId: true,
             customerName: true,
             totalAmount: true,
             status: true,

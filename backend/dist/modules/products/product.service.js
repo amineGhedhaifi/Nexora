@@ -20,9 +20,9 @@ const productSelect = {
         },
     },
 };
-export async function getProducts(categorySlug, page, limit) {
+export async function getProducts(categorySlug, page, limit, includeInactive = false) {
     const where = {
-        isActive: true,
+        ...(includeInactive ? {} : { isActive: true }),
         ...(categorySlug
             ? {
                 category: {

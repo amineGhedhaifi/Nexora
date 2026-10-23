@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { adminCategoriesService, type AdminCategory } from "@/services/admin-categories.service";
 import { getErrorMessage } from "@/services/api";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface Category {
   id: string;
@@ -32,6 +33,7 @@ function toCategory(adminCategory: AdminCategory): Category {
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState<keyof Category>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [formOpen, setFormOpen] = useState(false);
@@ -61,8 +63,8 @@ export default function CategoriesPage() {
 
   const filteredCategories = categories
     .filter((c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.slug.toLowerCase().includes(search.toLowerCase())
+      c.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      c.slug.toLowerCase().includes(debouncedSearch.toLowerCase())
     )
     .sort((a, b) => {
       const aVal = a[sortBy];

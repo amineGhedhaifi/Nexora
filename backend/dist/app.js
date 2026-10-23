@@ -12,12 +12,14 @@ import orderRoutes from "./modules/orders/order.routes.js";
 import contactRoutes from "./modules/contact/contact.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 const app = express();
-app.use(helmet());
-app.use("/uploads/products", express.static(path.resolve(process.cwd(), "uploads", "products")));
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 app.use(cors({
     origin: "http://localhost:3000",
     credentials: true,
 }));
+app.use("/uploads/products", express.static(path.resolve(process.cwd(), "uploads", "products")));
 app.use(express.json());
 app.use(cookieParser());
 app.get("/api/health", (_req, res) => {

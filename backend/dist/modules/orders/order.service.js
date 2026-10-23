@@ -44,7 +44,9 @@ export async function createOrder(data, userId) {
             if (product.stock < item.quantity) {
                 throw new AppError(400, `Insufficient stock for "${product.name}".`);
             }
-            const unitPriceCents = Math.round(Number(product.price) * 100);
+            const priceStr = String(product.price);
+            const [dollars, cents = "0"] = priceStr.split(".");
+            const unitPriceCents = Number(dollars) * 100 + Number(cents.padEnd(2, "0").slice(0, 2));
             totalAmountCents += unitPriceCents * item.quantity;
             return {
                 productId: product.id,
@@ -161,4 +163,132 @@ export async function getMyOrders(userId, query) {
             totalPages: Math.ceil(total / limit),
         },
     };
+}
+export async function getAdminOrders(query) {
+    const { page, limit, status, search } = query;
+    const skip = (page - 1) * limit;
+    const where = {
+        ...(status && { status }),
+        ...(search && {
+            OR: [
+                { customerName: { contains: search, mode: "insensitive" } },
+                { customerPhone: { contains: search } },
+                { id: { contains: search } },
+            ],
+        }),
+    };
+    const [orders, total] = await prisma.$transaction([
+        prisma.order.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+            select: {
+                id: true,
+                status: true,
+                totalAmount: true,
+                customerName: true,
+                customerPhone: true,
+                shippingAddress: true,
+                createdAt: true,
+                updatedAt: true,
+                _count: {
+                    select: { items: true },
+                },
+            },
+        }),
+        prisma.order.count({ where }),
+    ]);
+    return {
+        orders,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
+}
+export async function getAdminOrderById(orderId) {
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+            items: {
+                include: {
+                    product: {
+                        select: {
+                            id: true,
+                            name: true,
+                            slug: true,
+                            imageUrl: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+    if (!order) {
+        throw new AppError(404, "Order not found.");
+    }
+    return order;
+}
+export async function updateOrderStatus(orderId, data) {
+    return prisma.$transaction(async (tx) => {
+        const order = await tx.order.findUnique({
+            where: { id: orderId },
+            include: {
+                items: {
+                    select: {
+                        productId: true,
+                        quantity: true,
+                    },
+                },
+            },
+        });
+        if (!order) {
+            throw new AppError(404, "Order not found.");
+        }
+        const nextStatus = data.status;
+        if (order.status === nextStatus) {
+            return order;
+        }
+        const allowedTransitions = {
+            PENDING: ["CONFIRMED", "CANCELLED"],
+            CONFIRMED: ["SHIPPED", "CANCELLED"],
+            SHIPPED: ["DELIVERED"],
+            DELIVERED: [],
+            CANCELLED: [],
+        };
+        if (!allowedTransitions[order.status]?.includes(nextStatus)) {
+            throw new AppError(409, `Cannot change order status from ${order.status} to ${nextStatus}.`);
+        }
+        if (nextStatus === "CANCELLED") {
+            for (const item of order.items) {
+                await tx.product.update({
+                    where: { id: item.productId },
+                    data: {
+                        stock: { increment: item.quantity },
+                    },
+                });
+            }
+        }
+        return tx.order.update({
+            where: { id: orderId },
+            data: { status: nextStatus },
+            include: {
+                items: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                slug: true,
+                                imageUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    });
 }

@@ -1,45 +1,23 @@
 import { useState } from "react";
-import { Truck, PackageCheck, Clock, XCircle, User, MapPin, Phone, Mail, Package } from "lucide-react";
+import { Truck, PackageCheck, Clock, XCircle, User, MapPin, Mail, Package } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductImage } from "@/components/shared/ProductImage";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-type OrderStatus = "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
-
-interface OrderItem {
-  productId: string;
-  name: string;
-  price: number;
-  image: string | null;
-  quantity: number;
-}
-
-interface Order {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  shippingAddress: string;
-  date: string;
-  total: number;
-  status: OrderStatus;
-  items: OrderItem[];
-  customerType: "registered" | "guest";
-}
+import type { AdminOrderDetails, AdminOrderStatus } from "@/types/order";
 
 interface OrderDetailsDialogProps {
   open: boolean;
   onClose: () => void;
-  order: Order | null;
-  onStatusUpdate: (order: Order, newStatus: OrderStatus) => void;
+  order: AdminOrderDetails | null;
+  onStatusUpdate: (order: AdminOrderDetails, newStatus: AdminOrderStatus) => void;
 }
 
-const statusOrder: OrderStatus[] = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
+const statusOrder: AdminOrderStatus[] = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
 
-const statusConfig: Record<OrderStatus, { variant: "neutral" | "primary" | "destructive" | "success" | "warning" | "info"; label: string; icon: React.ReactNode }> = {
+const statusConfig: Record<AdminOrderStatus, { variant: "neutral" | "primary" | "destructive" | "success" | "warning" | "info"; label: string; icon: React.ReactNode }> = {
   PENDING: { variant: "info", label: "Pending", icon: <Clock className="size-3" /> },
   CONFIRMED: { variant: "primary", label: "Confirmed", icon: <PackageCheck className="size-3" /> },
   SHIPPED: { variant: "warning", label: "Shipped", icon: <Truck className="size-3" /> },
@@ -47,7 +25,7 @@ const statusConfig: Record<OrderStatus, { variant: "neutral" | "primary" | "dest
   CANCELLED: { variant: "destructive", label: "Cancelled", icon: <XCircle className="size-3" /> },
 };
 
-const nextStatus: Record<OrderStatus, OrderStatus | null> = {
+const nextStatus: Record<AdminOrderStatus, AdminOrderStatus | null> = {
   PENDING: "CONFIRMED",
   CONFIRMED: "SHIPPED",
   SHIPPED: "DELIVERED",
@@ -56,14 +34,15 @@ const nextStatus: Record<OrderStatus, OrderStatus | null> = {
 };
 
 const statusTimeline = [
-  { status: "PENDING" as OrderStatus, label: "Order Placed" },
-  { status: "CONFIRMED" as OrderStatus, label: "Confirmed" },
-  { status: "SHIPPED" as OrderStatus, label: "Shipped" },
-  { status: "DELIVERED" as OrderStatus, label: "Delivered" },
+  { status: "PENDING" as AdminOrderStatus, label: "Order Placed" },
+  { status: "CONFIRMED" as AdminOrderStatus, label: "Confirmed" },
+  { status: "SHIPPED" as AdminOrderStatus, label: "Shipped" },
+  { status: "DELIVERED" as AdminOrderStatus, label: "Delivered" },
 ];
 
 export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: OrderDetailsDialogProps) {
   const [activeTab, setActiveTab] = useState<"details" | "timeline">("details");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   if (!order) return null;
 
@@ -82,7 +61,7 @@ export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: Ord
                 {config.label}
               </Badge>
             </DialogTitle>
-            <DialogDescription>Placed on {formatDate(order.date)}</DialogDescription>
+            <DialogDescription>Placed on {formatDate(order.createdAt)}</DialogDescription>
           </div>
         </DialogHeader>
 
@@ -124,20 +103,16 @@ export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: Ord
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="grid size-10 place-items-center rounded-lg bg-accent text-accent-foreground shrink-0">
-                        {order.customerType === "registered" ? <User className="size-5" /> : <User className="size-5" />}
+                        <User className="size-5" />
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium truncate">{order.customerName}</p>
-                        <p className="text-sm text-muted-foreground truncate">{order.customerType === "registered" ? "Registered Customer" : "Guest Order"}</p>
+                        <p className="text-sm text-muted-foreground truncate">{order.userId ? "Registered Customer" : "Guest Order"}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 pl-10">
                       <Mail className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                      <a href={`mailto:${order.customerEmail}`} className="text-sm hover:underline truncate">{order.customerEmail}</a>
-                    </div>
-                    <div className="flex items-center gap-3 pl-10">
-                      <Phone className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                      <a href={`tel:${order.customerPhone}`} className="text-sm hover:underline truncate">{order.customerPhone}</a>
+                      <span className="text-sm text-muted-foreground truncate">Phone: {order.customerPhone}</span>
                     </div>
                   </div>
                 </section>
@@ -158,16 +133,16 @@ export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: Ord
                     {order.items.map((item) => (
                       <div key={item.productId} className="flex items-center gap-3 sm:gap-4 p-3 rounded-lg border">
                         <ProductImage
-                          src={item.image}
-                          alt={item.name}
+                          src={item.product.imageUrl}
+                          alt={item.product.name}
                           className="size-14 sm:size-16 rounded object-cover shrink-0"
                           fallback={<div className="size-14 sm:size-16 rounded bg-muted flex items-center justify-center"><Package className="size-6 text-muted-foreground" /></div>}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">Qty: {item.quantity} × {formatCurrency(item.price)}</p>
+                          <p className="font-medium truncate">{item.product.name}</p>
+                          <p className="text-sm text-muted-foreground">Qty: {item.quantity} × {formatCurrency(Number(item.unitPrice))}</p>
                         </div>
-                        <p className="font-medium tabular-nums whitespace-nowrap shrink-0">{formatCurrency(item.price * item.quantity)}</p>
+                        <p className="font-medium tabular-nums whitespace-nowrap shrink-0">{formatCurrency(Number(item.unitPrice) * item.quantity)}</p>
                       </div>
                     ))}
                   </div>
@@ -177,15 +152,15 @@ export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: Ord
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>{formatCurrency(order.items.reduce((sum, item) => sum + item.price * item.quantity, 0))}</span>
+                      <span>{formatCurrency(order.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0))}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Shipping</span>
-                      <span>{formatCurrency(6.99)}</span>
+                      <span>{formatCurrency(Number(order.totalAmount) - order.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0))}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2 font-semibold">
                       <span>Total</span>
-                      <span>{formatCurrency(order.total)}</span>
+                      <span>{formatCurrency(Number(order.totalAmount))}</span>
                     </div>
                   </div>
                 </section>
@@ -234,7 +209,11 @@ export function OrderDetailsDialog({ open, onClose, order, onStatusUpdate }: Ord
         <DialogFooter className="border-t pt-4 flex flex-col sm:flex-row sm:justify-end gap-2">
           {next && (
             <Button
-              onClick={() => onStatusUpdate(order, next)}
+              onClick={() => {
+                setUpdatingStatus(true);
+                onStatusUpdate(order, next);
+              }}
+              disabled={updatingStatus}
               className="w-full sm:w-auto ml-0 sm:ml-auto"
             >
               Mark as {statusConfig[next].label}

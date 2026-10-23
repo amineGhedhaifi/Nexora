@@ -18,3 +18,14 @@ export const orderQuerySchema = z.object({
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(50).default(10),
 });
+export const adminOrderQuerySchema = z.object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(50).default(10),
+    status: z
+        .enum(["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"])
+        .optional(),
+    search: z.string().trim().max(100).optional(),
+});
+export const updateOrderStatusSchema = z.object({
+    status: z.enum(["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"]),
+});

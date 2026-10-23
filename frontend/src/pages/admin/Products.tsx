@@ -10,6 +10,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { adminProductsService, type AdminProduct } from "@/services/products.service";
 import { categoriesService } from "@/services/categories.service";
 import { getErrorMessage } from "@/services/api";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface Category {
   id: string;
@@ -21,6 +22,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortBy, setSortBy] = useState<keyof AdminProduct>("name");
@@ -76,8 +78,8 @@ export default function ProductsPage() {
 
   const filteredProducts = products
     .filter((p) => {
-      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.slug.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        p.slug.toLowerCase().includes(debouncedSearch.toLowerCase());
       const matchesStatus = !statusFilter || (statusFilter === "active" ? p.isActive : !p.isActive);
       return matchesSearch && matchesStatus;
     })

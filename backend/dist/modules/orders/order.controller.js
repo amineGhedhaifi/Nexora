@@ -1,5 +1,5 @@
-import { createOrderSchema, orderIdSchema, orderQuerySchema, } from "./order.schema.js";
-import { createOrder, getOrderById, getMyOrders } from "./order.service.js";
+import { createOrderSchema, orderIdSchema, orderQuerySchema, adminOrderQuerySchema, updateOrderStatusSchema, } from "./order.schema.js";
+import { createOrder, getOrderById, getMyOrders, getAdminOrders, getAdminOrderById, updateOrderStatus, } from "./order.service.js";
 import { AppError } from "../../utils/app-error.js";
 export async function addOrder(req, res, next) {
     try {
@@ -46,6 +46,40 @@ export async function getMyOrderHistory(req, res, next) {
         const query = orderQuerySchema.parse(req.query);
         const result = await getMyOrders(userId, query);
         res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+}
+export async function getAdminOrdersController(req, res, next) {
+    try {
+        const query = adminOrderQuerySchema.parse(req.query);
+        const result = await getAdminOrders(query);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+}
+export async function getAdminOrderByIdController(req, res, next) {
+    try {
+        const { id } = orderIdSchema.parse(req.params);
+        const order = await getAdminOrderById(id);
+        res.status(200).json({ order });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+export async function updateOrderStatusController(req, res, next) {
+    try {
+        const { id } = orderIdSchema.parse(req.params);
+        const data = updateOrderStatusSchema.parse(req.body);
+        const order = await updateOrderStatus(id, data);
+        res.status(200).json({
+            message: "Order status updated successfully.",
+            order,
+        });
     }
     catch (error) {
         next(error);
