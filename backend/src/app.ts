@@ -14,6 +14,7 @@ import contactRoutes from "./modules/contact/contact.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import customerRoutes from "./modules/customers/customer.routes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
+import notificationRoutes from "./modules/notifications/notification.routes.js";
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/notifications", notificationRoutes);
 
 app.use(errorHandler);
 

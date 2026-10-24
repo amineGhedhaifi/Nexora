@@ -1,0 +1,15 @@
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([isRead, createdAt])
+  @@index([type, createdAt])
+}
+
+enum NotificationType {
+  NEW_ORDER
+  NEW_MESSAGE
+}

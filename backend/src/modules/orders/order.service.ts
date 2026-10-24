@@ -70,7 +70,8 @@ export async function createOrder(data: CreateOrderInput, userId?: string) {
 
       const priceStr = String(product.price);
       const [dollars, cents = "0"] = priceStr.split(".");
-      const unitPriceCents = Number(dollars) * 100 + Number(cents.padEnd(2, "0").slice(0, 2));
+      const unitPriceCents =
+        Number(dollars) * 100 + Number(cents.padEnd(2, "0").slice(0, 2));
 
       totalAmountCents += unitPriceCents * item.quantity;
 
@@ -103,7 +104,7 @@ export async function createOrder(data: CreateOrderInput, userId?: string) {
     }
 
     // Create the order and its items in the same transaction.
-    return tx.order.create({
+    const order = await tx.order.create({
       data: {
         userId: userId ?? null,
         trackingToken,
@@ -130,6 +131,16 @@ export async function createOrder(data: CreateOrderInput, userId?: string) {
         },
       },
     });
+
+    // Create the notification in the same transaction.
+    await tx.notification.create({
+      data: {
+        type: "NEW_ORDER",
+        message: `New order received from ${order.customerName}.`,
+      },
+    });
+
+    return order;
   });
 }
 
@@ -283,7 +294,10 @@ export async function getAdminOrderById(orderId: string) {
   return order;
 }
 
-export async function getOrdersByUserId(userId: string, query: AdminOrderQueryInput) {
+export async function getOrdersByUserId(
+  userId: string,
+  query: AdminOrderQueryInput,
+) {
   const { page, limit, status, search } = query;
   const skip = (page - 1) * limit;
 
