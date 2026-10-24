@@ -1,4 +1,4 @@
-import { Check, ClipboardCheck, PackageCheck, Truck, type LucideIcon } from "lucide-react"
+import { Check, ClipboardCheck, PackageCheck, Truck, XCircle, type LucideIcon } from "lucide-react"
 import { ORDER_STATUSES, getStatusIndex, orderStatusMeta } from "@/lib/orders"
 import { cn } from "@/lib/utils"
 import type { OrderStatus } from "@/types/order"
@@ -7,6 +7,7 @@ const stepIcons: Record<OrderStatus, LucideIcon> = {
   ordered: ClipboardCheck,
   shipping: Truck,
   delivered: PackageCheck,
+  cancelled: XCircle,
 }
 
 type StepState = "complete" | "current" | "upcoming"

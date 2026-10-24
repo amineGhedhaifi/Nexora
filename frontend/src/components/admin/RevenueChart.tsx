@@ -28,7 +28,9 @@ function ChartTooltip({
   return (
     <div className="rounded-xl border bg-card px-3 py-2 text-sm shadow-md">
       <p className="font-semibold text-foreground">Month: {label}</p>
-      <p className="text-muted-foreground">Revenue: {formatCurrency(payload[0].value)}</p>
+      <p className="text-muted-foreground">
+        Revenue: {formatCurrency(payload[0].value)}
+      </p>
     </div>
   );
 }
@@ -50,7 +52,10 @@ export function RevenueChart({ data }: RevenueChartProps) {
 
   const { total, avg } = useMemo(() => {
     const total = chartData.reduce((sum, d) => sum + d.revenue, 0);
-    return { total, avg: chartData.length ? Math.round(total / chartData.length) : 0 };
+    return {
+      total,
+      avg: chartData.length ? Math.round(total / chartData.length) : 0,
+    };
   }, [chartData]);
 
   if (chartData.length === 0) {
@@ -59,7 +64,9 @@ export function RevenueChart({ data }: RevenueChartProps) {
         <div className="mb-4 sm:mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold">Revenue Overview</h2>
-            <p className="text-sm text-muted-foreground">Track your store revenue over time</p>
+            <p className="text-sm text-muted-foreground">
+              Track your store revenue over time
+            </p>
           </div>
         </div>
         <div className="h-[240px] sm:h-[320px] w-full min-w-0 flex items-center justify-center">
@@ -71,8 +78,12 @@ export function RevenueChart({ data }: RevenueChartProps) {
             <span className="text-sm font-medium">Revenue</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span className="whitespace-nowrap">Total: {formatCurrency(total)}</span>
-            <span className="whitespace-nowrap">Avg: {formatCurrency(avg)}/mo</span>
+            <span className="whitespace-nowrap">
+              Total: {formatCurrency(total)}
+            </span>
+            <span className="whitespace-nowrap">
+              Avg: {formatCurrency(avg)}/mo
+            </span>
           </div>
         </div>
       </div>
@@ -84,13 +95,18 @@ export function RevenueChart({ data }: RevenueChartProps) {
       <div className="mb-4 sm:mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-semibold">Revenue Overview</h2>
-          <p className="text-sm text-muted-foreground">Track your store revenue over time</p>
+          <p className="text-sm text-muted-foreground">
+            Track your store revenue over time
+          </p>
         </div>
       </div>
 
       <div className="h-[240px] sm:h-[320px] w-full min-w-0 text-muted-foreground">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <AreaChart
+            data={chartData}
+            margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+          >
             <defs>
               <linearGradient id="revenue-gradient" x1="0" y1="0" x2="0" y2="1">
                 <stop
@@ -108,7 +124,12 @@ export function RevenueChart({ data }: RevenueChartProps) {
               </linearGradient>
             </defs>
 
-            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.2} />
+            <CartesianGrid
+              vertical={false}
+              strokeDasharray="3 3"
+              stroke="currentColor"
+              strokeOpacity={0.2}
+            />
             <XAxis
               dataKey="name"
               axisLine={false}
@@ -123,9 +144,14 @@ export function RevenueChart({ data }: RevenueChartProps) {
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 11, fill: "currentColor" }}
-              tickFormatter={(v: number) => formatCurrency(v).replace(/\.00$/, "k")}
+              tickFormatter={(v: number) =>
+                formatCurrency(v).replace(/\.00$/, "k")
+              }
             />
-            <Tooltip cursor={{ stroke: "currentColor", strokeOpacity: 0.3 }} content={<ChartTooltip />} />
+            <Tooltip
+              cursor={{ stroke: "currentColor", strokeOpacity: 0.3 }}
+              content={<ChartTooltip />}
+            />
             <Area
               type="monotone"
               dataKey="revenue"
@@ -150,8 +176,12 @@ export function RevenueChart({ data }: RevenueChartProps) {
           <span className="text-sm font-medium">Revenue</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <span className="whitespace-nowrap">Total: {formatCurrency(total)}</span>
-          <span className="whitespace-nowrap">Avg: {formatCurrency(avg)}/mo</span>
+          <span className="whitespace-nowrap">
+            Total: {formatCurrency(total)}
+          </span>
+          <span className="whitespace-nowrap">
+            Avg: {formatCurrency(avg)}/mo
+          </span>
         </div>
       </div>
     </div>

@@ -1,5 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, Eye, Truck, PackageCheck, XCircle, Clock, Package, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import {
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Truck,
+  PackageCheck,
+  XCircle,
+  Clock,
+  Package,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -8,20 +21,66 @@ import { Pagination } from "@/components/ui/pagination";
 import { OrderDetailsDialog } from "@/components/admin/OrderDetailsDialog";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { adminOrdersService } from "@/services/admin-orders.service";
-import type { AdminOrderSummary, AdminOrderDetails, AdminOrderStatus, AdminOrdersPagination } from "@/types/order";
+import type {
+  AdminOrderSummary,
+  AdminOrderDetails,
+  AdminOrderStatus,
+  AdminOrdersPagination,
+} from "@/types/order";
 import { getErrorMessage } from "@/services/api";
 import { useDebounce } from "@/hooks/useDebounce";
 
-const statusOrder: AdminOrderStatus[] = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
+type SortKey = keyof AdminOrderSummary;
+type SortOrder = "asc" | "desc";
 
-const statusConfig: Record<AdminOrderStatus, { variant: "neutral" | "primary" | "destructive" | "success" | "warning" | "info"; label: string; icon: React.ReactNode }> = {
-  PENDING: { variant: "info", label: "Pending", icon: <Clock className="size-3" /> },
-  CONFIRMED: { variant: "primary", label: "Confirmed", icon: <PackageCheck className="size-3" /> },
-  SHIPPED: { variant: "warning", label: "Shipped", icon: <Truck className="size-3" /> },
-  DELIVERED: { variant: "success", label: "Delivered", icon: <PackageCheck className="size-3" /> },
-  CANCELLED: { variant: "destructive", label: "Cancelled", icon: <XCircle className="size-3" /> },
+const statusOrder: AdminOrderStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "SHIPPED",
+  "DELIVERED",
+  "CANCELLED",
+];
+
+const statusConfig: Record<
+  AdminOrderStatus,
+  {
+    variant:
+      | "neutral"
+      | "primary"
+      | "destructive"
+      | "success"
+      | "warning"
+      | "info";
+    label: string;
+    icon: React.ReactNode;
+  }
+> = {
+  PENDING: {
+    variant: "info",
+    label: "Pending",
+    icon: <Clock className="size-3" />,
+  },
+  CONFIRMED: {
+    variant: "primary",
+    label: "Confirmed",
+    icon: <PackageCheck className="size-3" />,
+  },
+  SHIPPED: {
+    variant: "warning",
+    label: "Shipped",
+    icon: <Truck className="size-3" />,
+  },
+  DELIVERED: {
+    variant: "success",
+    label: "Delivered",
+    icon: <PackageCheck className="size-3" />,
+  },
+  CANCELLED: {
+    variant: "destructive",
+    label: "Cancelled",
+    icon: <XCircle className="size-3" />,
+  },
 };
 
 const nextStatus: Record<AdminOrderStatus, AdminOrderStatus | null> = {
@@ -32,6 +91,81 @@ const nextStatus: Record<AdminOrderStatus, AdminOrderStatus | null> = {
   CANCELLED: null,
 };
 
+function SortableHeader({
+  label,
+  column,
+  sortBy,
+  sortOrder,
+  onSort,
+}: {
+  label: string;
+  column: SortKey;
+  sortBy: SortKey;
+  sortOrder: SortOrder;
+  onSort: (column: SortKey) => void;
+}) {
+  const active = sortBy === column;
+  return (
+    <th
+      scope="col"
+      aria-sort={
+        active ? (sortOrder === "asc" ? "ascending" : "descending") : "none"
+      }
+      className="whitespace-nowrap"
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className="flex items-center gap-1 rounded hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {label}
+        {active &&
+          (sortOrder === "asc" ? (
+            <ChevronUp className="size-3.5 text-primary" />
+          ) : (
+            <ChevronDown className="size-3.5 text-primary" />
+          ))}
+      </button>
+    </th>
+  );
+}
+
+function StatusBadge({ status }: { status: AdminOrderStatus }) {
+  const config = statusConfig[status];
+  return (
+    <Badge
+      variant={config.variant}
+      className="shrink-0 gap-1 whitespace-nowrap"
+    >
+      {config.icon}
+      {config.label}
+    </Badge>
+  );
+}
+
+function DateFilter({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <Input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full sm:w-[160px]"
+        aria-label={`Date ${label.toLowerCase()}`}
+      />
+    </label>
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
   const [search, setSearch] = useState("");
@@ -39,8 +173,8 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<AdminOrderStatus | "">("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [sortBy, setSortBy] = useState<keyof AdminOrderSummary>("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<SortKey>("createdAt");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<AdminOrdersPagination>({
     page: 1,
@@ -50,12 +184,18 @@ export default function OrdersPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<AdminOrderDetails | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrderDetails | null>(
+    null,
+  );
   const [selectedOrderLoading, setSelectedOrderLoading] = useState(false);
-  const [statusUpdateConfirm, setStatusUpdateConfirm] = useState<{ order: AdminOrderDetails; newStatus: AdminOrderStatus } | null>(null);
+  const [statusUpdateConfirm, setStatusUpdateConfirm] = useState<{
+    order: AdminOrderDetails;
+    newStatus: AdminOrderStatus;
+  } | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const limit = 10;
 
+  // Sorting and the date range only apply to the orders on the current page (the API does the paging).
   const sortedOrders = useMemo(() => {
     return [...orders].sort((a, b) => {
       const aVal = a[sortBy];
@@ -71,7 +211,7 @@ export default function OrdersPage() {
 
   const filteredOrders = useMemo(() => {
     return sortedOrders.filter((order) => {
-      const orderDate = order.createdAt.split("T")[0]; // Get YYYY-MM-DD part
+      const orderDate = order.createdAt.split("T")[0]; // YYYY-MM-DD
       const matchesDateFrom = !dateFrom || orderDate >= dateFrom;
       const matchesDateTo = !dateTo || orderDate <= dateTo;
       return matchesDateFrom && matchesDateTo;
@@ -122,11 +262,19 @@ export default function OrdersPage() {
     setPage(1);
   };
 
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  };
+
   const handleStatusUpdate = (order: AdminOrderSummary) => {
     const newStatus = nextStatus[order.status];
     if (newStatus) {
-      // For the confirmation dialog, we need AdminOrderDetails, but we only have AdminOrderSummary.
-      // We'll create a minimal AdminOrderDetails object with the required fields.
+      // The confirmation dialog expects AdminOrderDetails, but the list only has a summary,
+      // so build a minimal details object with the fields the dialog needs.
       const orderDetails: AdminOrderDetails = {
         id: order.id,
         userId: null,
@@ -148,18 +296,23 @@ export default function OrdersPage() {
     if (!statusUpdateConfirm) return;
     setUpdatingStatus(true);
     try {
-      await adminOrdersService.updateOrderStatus(statusUpdateConfirm.order.id, { status: statusUpdateConfirm.newStatus });
-      setStatusUpdateConfirm(null);
+      await adminOrdersService.updateOrderStatus(statusUpdateConfirm.order.id, {
+        status: statusUpdateConfirm.newStatus,
+      });
       // Refetch orders to update the list
       fetchOrders();
-      // Also refetch the selected order details if dialog is open
+      // Also refresh the open details dialog
       if (selectedOrder) {
-        const updatedOrder = await adminOrdersService.getOrderById(selectedOrder.id);
+        const updatedOrder = await adminOrdersService.getOrderById(
+          selectedOrder.id,
+        );
         setSelectedOrder(updatedOrder);
       }
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
+      // Close the confirmation on success *and* failure, so an error isn't hidden behind the modal.
+      setStatusUpdateConfirm(null);
       setUpdatingStatus(false);
     }
   };
@@ -182,7 +335,7 @@ export default function OrdersPage() {
     }
   };
 
-  const handleSort = (column: keyof AdminOrderSummary) => {
+  const handleSort = (column: SortKey) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -191,177 +344,324 @@ export default function OrdersPage() {
     }
   };
 
+  const hasFilters = Boolean(search || statusFilter || dateFrom || dateTo);
+
   return (
-    <div className="space-y-6 min-w-0">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 min-w-0">
+    <div className="min-w-0 space-y-6">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">Orders</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage and track customer orders</p>
+          <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
+            Orders
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage and track customer orders
+          </p>
         </div>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-destructive bg-destructive/10 p-4 flex items-center gap-3" role="alert">
-          <AlertCircle className="size-5 text-destructive shrink-0" aria-hidden="true" />
-          <p className="text-sm text-destructive">{error}</p>
-          <Button variant="ghost" size="sm" onClick={() => setError(null)}>
+        <div
+          className="flex items-start gap-3 rounded-lg border border-destructive bg-destructive/10 p-4 sm:items-center"
+          role="alert"
+        >
+          <AlertCircle
+            className="mt-0.5 size-5 shrink-0 text-destructive sm:mt-0"
+            aria-hidden="true"
+          />
+          <p className="min-w-0 flex-1 break-words text-sm text-destructive">
+            {error}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+            onClick={() => setError(null)}
+          >
             Dismiss
           </Button>
         </div>
       )}
 
       <div className="rounded-2xl border bg-card shadow-sm">
-        <div className="p-4 border-b">
-          <div className="flex flex-col gap-4">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" aria-hidden="true" />
+        {/* Filters */}
+        <div className="border-b p-4">
+          <div className="flex flex-col gap-3">
+            <div className="relative min-w-0">
+              <Search
+                className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 placeholder="Search orders, customers..."
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-10 w-full"
+                className="w-full pl-10"
                 aria-label="Search orders"
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
-              <div className="flex-1 min-w-0">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
+              <label className="col-span-2 flex min-w-0 flex-col gap-1 sm:col-span-1">
+                <span className="text-xs text-muted-foreground">Status</span>
                 <Select
                   value={statusFilter}
-                  onChange={(e) => handleStatusFilterChange(e.target.value as AdminOrderStatus | "")}
+                  onChange={(e) =>
+                    handleStatusFilterChange(
+                      e.target.value as AdminOrderStatus | "",
+                    )
+                  }
                   className="w-full sm:w-[160px]"
                   aria-label="Filter by status"
                 >
                   <option value="">All Status</option>
                   {statusOrder.map((status) => (
-                    <option key={status} value={status}>{statusConfig[status].label}</option>
+                    <option key={status} value={status}>
+                      {statusConfig[status].label}
+                    </option>
                   ))}
                 </Select>
-              </div>
+              </label>
 
-              <div className="flex-1 min-w-0">
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => handleDateFromChange(e.target.value)}
-                  className="w-full sm:w-[160px]"
-                  placeholder="From"
-                  aria-label="Date from"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => handleDateToChange(e.target.value)}
-                  className="w-full sm:w-[160px]"
-                  placeholder="To"
-                  aria-label="Date to"
-                />
-              </div>
+              <DateFilter
+                label="From"
+                value={dateFrom}
+                onChange={handleDateFromChange}
+              />
+              <DateFilter
+                label="To"
+                value={dateTo}
+                onChange={handleDateToChange}
+              />
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full min-w-0">
-                <span className="text-sm text-muted-foreground self-center whitespace-nowrap hidden sm:block">Sort by:</span>
-                <div className="flex-1 min-w-0">
-<Select
-                      value={sortBy}
-                      onChange={(e) => handleSort(e.target.value as keyof AdminOrderSummary)}
-                      className="w-full sm:w-[150px]"
-                      aria-label="Sort by"
-                    >
-                      <option value="createdAt">Date</option>
-                      <option value="totalAmount">Total</option>
-                      <option value="status">Status</option>
-                      <option value="customerName">Customer</option>
-                    </Select>
-                </div>
+              <div className="col-span-2 flex min-w-0 items-center gap-2 sm:col-span-1">
+                <span className="hidden whitespace-nowrap text-sm text-muted-foreground sm:block">
+                  Sort by:
+                </span>
+                <Select
+                  value={sortBy}
+                  onChange={(e) => handleSort(e.target.value as SortKey)}
+                  className="w-full sm:w-[150px]"
+                  aria-label="Sort by"
+                >
+                  <option value="createdAt">Date</option>
+                  <option value="totalAmount">Total</option>
+                  <option value="status">Status</option>
+                  <option value="customerName">Customer</option>
+                </Select>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                  aria-label={sortOrder === "asc" ? "Sort descending" : "Sort ascending"}
+                  onClick={() =>
+                    setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+                  }
+                  aria-label={
+                    sortOrder === "asc" ? "Sort descending" : "Sort ascending"
+                  }
                   className="shrink-0"
                 >
-                  {sortOrder === "asc" ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                  {sortOrder === "asc" ? (
+                    <ChevronUp className="size-4" />
+                  ) : (
+                    <ChevronDown className="size-4" />
+                  )}
                 </Button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 min-w-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
-              <span className="sr-only">Loading orders...</span>
-            </div>
-          ) : (
-            <>
-              <table className="w-full min-w-[900px]" role="table">
+        {/* Results */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2
+              className="size-8 animate-spin text-primary"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Loading orders...</span>
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+            <Package
+              className="size-12 text-muted-foreground/50"
+              aria-hidden="true"
+            />
+            <h3 className="mt-4 text-lg font-medium">No orders found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {hasFilters
+                ? "Try adjusting your search or filters"
+                : "No orders yet"}
+            </p>
+            {hasFilters && (
+              <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Below lg: one card per order, nothing scrolls sideways */}
+            <ul className="divide-y lg:hidden">
+              {filteredOrders.map((order) => {
+                const next = nextStatus[order.status];
+                return (
+                  <li key={order.id} className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="min-w-0 break-all font-mono text-sm font-medium">
+                        {order.id}
+                      </span>
+                      <StatusBadge status={order.status} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {order.customerName}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {order.customerPhone}
+                      </p>
+                    </div>
+
+                    <dl className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="min-w-0">
+                        <dt className="text-xs text-muted-foreground">Date</dt>
+                        <dd className="mt-0.5 break-words">
+                          {formatDate(order.createdAt)}
+                        </dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-xs text-muted-foreground">Total</dt>
+                        <dd className="mt-0.5 break-words font-medium tabular-nums">
+                          {formatCurrency(Number(order.totalAmount))}
+                        </dd>
+                      </div>
+                      <div className="min-w-0">
+                        <dt className="text-xs text-muted-foreground">Items</dt>
+                        <dd className="mt-0.5 flex items-center gap-1 tabular-nums">
+                          <Package
+                            className="size-3.5 shrink-0 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                          {order._count.items}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10 flex-1"
+                        onClick={() => handleViewOrder(order)}
+                        disabled={selectedOrderLoading}
+                        aria-label={`View order ${order.id}`}
+                      >
+                        <Eye className="mr-2 size-4" aria-hidden="true" />
+                        View
+                      </Button>
+                      {next && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10 flex-1"
+                          onClick={() => handleStatusUpdate(order)}
+                          disabled={updatingStatus}
+                          aria-label={`Mark order ${order.id} as ${statusConfig[next].label}`}
+                        >
+                          Mark as {statusConfig[next].label}
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* lg and up: table */}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full">
                 <thead>
-                  <tr className="border-b [&_th]:px-4 sm:[&_th]:px-6 [&_th]:py-3 [&_th]:text-left [&_th]:text-sm [&_th]:font-medium [&_th]:text-muted-foreground">
-                    <th scope="col" className={cn("cursor-pointer hover:text-foreground whitespace-nowrap")}>
-                      <div className="flex items-center gap-1">
-                        Order ID
-                        {sortBy === "id" && (sortOrder === "asc" ? <ChevronUp className="size-3.5 text-primary" /> : <ChevronDown className="size-3.5 text-primary" />)}
-                      </div>
+                  <tr className="border-b [&_th]:px-6 [&_th]:py-3 [&_th]:text-left [&_th]:text-sm [&_th]:font-medium [&_th]:text-muted-foreground">
+                    <SortableHeader
+                      label="Order ID"
+                      column="id"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                    <SortableHeader
+                      label="Customer"
+                      column="customerName"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                    <SortableHeader
+                      label="Date"
+                      column="createdAt"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                    <SortableHeader
+                      label="Total"
+                      column="totalAmount"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                    <SortableHeader
+                      label="Status"
+                      column="status"
+                      sortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                    <th scope="col" className="whitespace-nowrap">
+                      Items
                     </th>
-                    <th scope="col" className={cn("cursor-pointer hover:text-foreground whitespace-nowrap")}>
-                      <div className="flex items-center gap-1">
-                        Customer
-                        {sortBy === "customerName" && (sortOrder === "asc" ? <ChevronUp className="size-3.5 text-primary" /> : <ChevronDown className="size-3.5 text-primary" />)}
-                      </div>
+                    <th scope="col" className="whitespace-nowrap !text-right">
+                      Actions
                     </th>
-                    <th scope="col" className={cn("cursor-pointer hover:text-foreground whitespace-nowrap")}>
-                      <div className="flex items-center gap-1">
-                        Date
-                        {sortBy === "createdAt" && (sortOrder === "asc" ? <ChevronUp className="size-3.5 text-primary" /> : <ChevronDown className="size-3.5 text-primary" />)}
-                      </div>
-                    </th>
-                    <th scope="col" className={cn("cursor-pointer hover:text-foreground whitespace-nowrap")}>
-                      <div className="flex items-center gap-1">
-                        Total
-                        {sortBy === "totalAmount" && (sortOrder === "asc" ? <ChevronUp className="size-3.5 text-primary" /> : <ChevronDown className="size-3.5 text-primary" />)}
-                      </div>
-                    </th>
-                    <th scope="col" className={cn("cursor-pointer hover:text-foreground whitespace-nowrap")}>
-                      <div className="flex items-center gap-1">
-                        Status
-                        {sortBy === "status" && (sortOrder === "asc" ? <ChevronUp className="size-3.5 text-primary" /> : <ChevronDown className="size-3.5 text-primary" />)}
-                      </div>
-                    </th>
-                    <th scope="col" className="whitespace-nowrap">Items</th>
-                    <th scope="col" className="text-right pr-4 sm:pr-6 whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="[&_td]:px-4 sm:[&_td]:px-6 [&_td]:py-4 [&_td]:text-sm [&_td]:border-b [&_tr:last-child_td]:border-0">
+                <tbody className="[&_td]:border-b [&_td]:px-6 [&_td]:py-4 [&_td]:text-sm [&_tr:last-child_td]:border-0">
                   {filteredOrders.map((order) => {
-                    const config = statusConfig[order.status];
                     const next = nextStatus[order.status];
                     return (
-                      <tr key={order.id} className="hover:bg-accent/50 transition-colors">
-                        <td className="font-mono font-medium whitespace-nowrap">{order.id}</td>
-                        <td className="max-w-[200px] sm:max-w-none">
-                          <div>
-                            <p className="font-medium truncate">{order.customerName}</p>
-                            <p className="text-xs text-muted-foreground truncate">{order.customerPhone}</p>
-                          </div>
+                      <tr
+                        key={order.id}
+                        className="transition-colors hover:bg-accent/50"
+                      >
+                        <td className="whitespace-nowrap font-mono font-medium">
+                          {order.id}
                         </td>
-                        <td className="text-muted-foreground whitespace-nowrap">{formatDate(order.createdAt)}</td>
-                        <td className="font-medium tabular-nums whitespace-nowrap">{formatCurrency(Number(order.totalAmount))}</td>
-                        <td className="whitespace-nowrap">
-                          <Badge variant={config.variant} className="gap-1 whitespace-nowrap">
-                            {config.icon}
-                            {config.label}
-                          </Badge>
+                        <td className="max-w-[240px]">
+                          <p className="truncate font-medium">
+                            {order.customerName}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {order.customerPhone}
+                          </p>
+                        </td>
+                        <td className="whitespace-nowrap text-muted-foreground">
+                          {formatDate(order.createdAt)}
+                        </td>
+                        <td className="whitespace-nowrap font-medium tabular-nums">
+                          {formatCurrency(Number(order.totalAmount))}
                         </td>
                         <td className="whitespace-nowrap">
-                          <Badge variant="neutral" className="gap-1 whitespace-nowrap">
+                          <StatusBadge status={order.status} />
+                        </td>
+                        <td className="whitespace-nowrap">
+                          <Badge
+                            variant="neutral"
+                            className="gap-1 whitespace-nowrap"
+                          >
                             <Package className="size-3" />
                             {order._count.items}
                           </Badge>
                         </td>
-                        <td className="text-right pr-4 sm:pr-6 whitespace-nowrap">
+                        <td className="whitespace-nowrap">
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               variant="ghost"
@@ -377,22 +677,13 @@ export default function OrdersPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleStatusUpdate(order)}
-                                className="hidden sm:inline-flex"
                                 disabled={updatingStatus}
                               >
                                 Mark as {statusConfig[next].label}
-                              </Button>
-                            )}
-                            {next && (
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => handleStatusUpdate(order)}
-                                className="sm:hidden"
-                                aria-label={`Mark order ${order.id} as ${statusConfig[next].label}`}
-                                disabled={updatingStatus}
-                              >
-                                <ChevronRight className="size-4" />
+                                <ChevronRight
+                                  className="ml-1 size-4"
+                                  aria-hidden="true"
+                                />
                               </Button>
                             )}
                           </div>
@@ -402,39 +693,37 @@ export default function OrdersPage() {
                   })}
                 </tbody>
               </table>
+            </div>
 
-              {filteredOrders.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                  <Package className="size-12 text-muted-foreground/50" aria-hidden="true" />
-                  <h3 className="mt-4 text-lg font-medium">No orders found</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {search || statusFilter || dateFrom || dateTo
-                      ? "Try adjusting your search or filters"
-                      : "No orders yet"}
+            {pagination.totalPages > 1 && (
+              <div className="border-t p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {filteredOrders.length} of {pagination.total} order
+                    {pagination.total !== 1 ? "s" : ""}
                   </p>
-                </div>
-              )}
-
-              {pagination.totalPages > 1 && (
-                <div className="border-t p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <p className="text-sm text-muted-foreground">
-                      Showing {filteredOrders.length} of {pagination.total} order{pagination.total !== 1 ? "s" : ""}
-                    </p>
-                    <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={handlePageChange} />
+                  <div className="overflow-x-auto">
+                    <Pagination
+                      page={pagination.page}
+                      totalPages={pagination.totalPages}
+                      onPageChange={handlePageChange}
+                    />
                   </div>
                 </div>
-              )}
-            </>
-          )}
-        </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <OrderDetailsDialog
         open={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
-        onStatusUpdate={(order, newStatus) => setStatusUpdateConfirm({ order, newStatus })}
+        onStatusUpdate={(order, newStatus) =>
+          setStatusUpdateConfirm({ order, newStatus })
+        }
+        updating={updatingStatus}
       />
 
       <ConfirmDialog

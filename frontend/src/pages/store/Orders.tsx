@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { PackageOpen } from "lucide-react";
+import { PackageOpen, Info } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -7,7 +7,7 @@ import { useOrders } from "@/hooks/useOrders";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Orders() {
-  const { data: orders, isPending } = useOrders();
+  const { data: orders = [], isPending } = useOrders();
   const { isAuthenticated } = useAuth();
 
   return (
@@ -47,15 +47,20 @@ export default function Orders() {
             <ul className="mt-8 space-y-4">
               {orders.map((order) => (
                 <li key={order.id}>
-                  <OrderCard order={order} />
+                  <OrderCard order={order} isStale={!isAuthenticated} />
                 </li>
               ))}
             </ul>
             {!isAuthenticated && (
-              <p className="mt-6 text-xs text-muted-foreground">
-                Orders are saved on this device. Clearing your browser data will
-                remove them from this list.
-              </p>
+              <div className="mt-6 rounded-xl bg-accent/50 p-4 text-sm text-accent-foreground">
+                <div className="flex items-start gap-3">
+                  <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <div>
+                    <p className="font-medium">Orders are saved on this device.</p>
+                    <p className="mt-1">Statuses shown here may be outdated. Tap an order to see the latest status.</p>
+                  </div>
+                </div>
+              </div>
             )}
           </>
         )}

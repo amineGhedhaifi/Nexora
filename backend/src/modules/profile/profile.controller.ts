@@ -20,8 +20,11 @@ export async function updateProfileController(
     const profile = await updateProfile(userId, data);
 
     res.status(200).json({
-      message: "Profile updated successfully.",
-      profile,
+      status: "success",
+      data: {
+        message: "Profile updated successfully.",
+        profile,
+      },
     });
   } catch (error) {
     next(error);
@@ -52,7 +55,10 @@ export async function changePasswordController(
       path: "/api/auth",
     });
 
-    res.status(200).json(result);
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
   } catch (error) {
     next(error);
   }

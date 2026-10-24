@@ -3,11 +3,17 @@ import type { CreateOrderInput, Order } from "@/types/order";
 import type { OrderConfirmation } from "@/services/orders-api.service";
 import { ordersApiService, isOrderApiError } from "@/services/orders-api.service";
 
-const TRACKING_TOKENS_KEY = "nexora-guest-tracking-tokens";
+const GUEST_ORDER_REFS_KEY = "nexora-guest-order-refs";
+const LEGACY_TRACKING_TOKENS_KEY = "nexora-guest-tracking-tokens";
 
 interface StoredOrder extends Order {
   /** The raw API response for reference. */
   apiResponse?: OrderConfirmation;
+}
+
+interface GuestOrderRef {
+  orderId: string;
+  trackingToken: string;
 }
 
 function readOrders(): StoredOrder[] {
@@ -29,39 +35,75 @@ function writeOrders(orders: StoredOrder[]): void {
   }
 }
 
-function readTrackingTokens(): Record<string, string> {
+function readGuestOrderRefs(): GuestOrderRef[] {
   try {
-    const raw = localStorage.getItem(TRACKING_TOKENS_KEY);
-    if (!raw) return {};
+    const raw = localStorage.getItem(GUEST_ORDER_REFS_KEY);
+    if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return (parsed as Record<string, string>) ?? {};
+    if (Array.isArray(parsed)) {
+      return parsed.filter((ref): ref is GuestOrderRef =>
+        typeof ref === "object" && ref !== null && typeof ref.orderId === "string" && typeof ref.trackingToken === "string"
+      );
+    }
+    return [];
   } catch {
-    return {};
+    return [];
   }
 }
 
-function writeTrackingTokens(tokens: Record<string, string>): void {
+function writeGuestOrderRefs(refs: GuestOrderRef[]): void {
   try {
-    localStorage.setItem(TRACKING_TOKENS_KEY, JSON.stringify(tokens));
+    localStorage.setItem(GUEST_ORDER_REFS_KEY, JSON.stringify(refs));
   } catch {
     // storage full or unavailable
   }
 }
 
-function getTrackingToken(orderId: string): string | undefined {
-  const tokens = readTrackingTokens();
-  return tokens[orderId];
+function migrateLegacyTrackingTokens(): GuestOrderRef[] | null {
+  try {
+    const raw = localStorage.getItem(LEGACY_TRACKING_TOKENS_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const legacy = parsed as Record<string, string>;
+    const migrated: GuestOrderRef[] = Object.entries(legacy)
+      .filter(([, token]) => typeof token === "string" && token.length > 0)
+      .map(([orderId, trackingToken]) => ({ orderId, trackingToken }));
+    if (migrated.length === 0) return null;
+
+    // Merge with any existing refs, deduplicating by orderId
+    const existingRefs = readGuestOrderRefs();
+    const existingIds = new Set(existingRefs.map((r) => r.orderId));
+    const merged = [...existingRefs, ...migrated.filter((r) => !existingIds.has(r.orderId))];
+
+    writeGuestOrderRefs(merged);
+    // Remove legacy key only after successful write
+    localStorage.removeItem(LEGACY_TRACKING_TOKENS_KEY);
+    return merged;
+  } catch {
+    // Migration failed - leave legacy data intact for next attempt
+    return null;
+  }
 }
 
-function setTrackingToken(orderId: string, token: string): void {
-  const tokens = readTrackingTokens();
-  tokens[orderId] = token;
-  writeTrackingTokens(tokens);
+function getTrackingTokenFromRefs(orderId: string): string | undefined {
+  const refs = readGuestOrderRefs();
+  const ref = refs.find((r) => r.orderId === orderId);
+  return ref?.trackingToken;
+}
+
+function setTrackingTokenInRefs(orderId: string, token: string): void {
+  const refs = readGuestOrderRefs();
+  const existingIndex = refs.findIndex((r) => r.orderId === orderId);
+  if (existingIndex >= 0) {
+    refs[existingIndex] = { orderId, trackingToken: token };
+  } else {
+    refs.push({ orderId, trackingToken: token });
+  }
+  writeGuestOrderRefs(refs);
 }
 
 function parseShippingAddress(address: string): Partial<Order["shippingInfo"]> {
-  // Best-effort parsing of the shipping address string.
-  // Format: "street, city, postalCode, country"
   const parts = address.split(",").map((p) => p.trim());
   return {
     address: parts[0] ?? "",
@@ -83,7 +125,6 @@ interface FormShippingInfo {
 }
 
 function toFrontendOrder(apiOrder: OrderConfirmation, formData?: CreateOrderInput): Order {
-  // Safely extract form data - handle both CreateOrderInput shape and the shape passed from Checkout
   const formShippingInfo = (formData as { shippingInfo?: FormShippingInfo } | undefined)?.shippingInfo;
   const firstName = formShippingInfo?.firstName ?? "";
   const lastName = formShippingInfo?.lastName ?? "";
@@ -127,17 +168,15 @@ function toFrontendOrder(apiOrder: OrderConfirmation, formData?: CreateOrderInpu
 
 async function fetchOrderFromApi(orderId: string, trackingToken?: string): Promise<Order | null> {
   try {
-    const storedToken = getTrackingToken(orderId);
-    const token = trackingToken ?? storedToken;
-    const apiOrder = await ordersApiService.getOrder(orderId, token);
+    const apiOrder = await ordersApiService.getOrder(orderId, trackingToken);
     return toFrontendOrder(apiOrder);
   } catch (error) {
     if (isOrderApiError(error)) {
-      // Order not found or access denied - return null to fall back to localStorage
+      // Order not found (404), access denied (403), or other API error - return null
       return null;
     }
-    // Network or server error - don't throw, fall back to localStorage
-    return null;
+    // Network error or other unexpected error - re-throw so TanStack Query can handle retry/error state
+    throw error;
   }
 }
 
@@ -147,65 +186,101 @@ async function fetchOrdersFromApi(page = 1, limit = 10): Promise<Order[]> {
     return result.orders.map((apiOrder) => toFrontendOrder(apiOrder));
   } catch (error) {
     if (isOrderApiError(error)) {
-      // Auth failed or other API error - return empty to fall back to localStorage
       return [];
     }
-    return [];
+    throw error;
   }
 }
 
 export const ordersService = {
-  /**
-   * Store an order created via the API.
-   * Merges the form data (with email, name parts, address breakdown)
-   * with the API response (with server-calculated totals, status, items).
-   */
   async storeOrder(apiOrder: OrderConfirmation, formData?: CreateOrderInput): Promise<Order> {
-    const orders = readOrders();
     const order = toFrontendOrder(apiOrder, formData);
     const storedOrder: StoredOrder = {
       ...order,
       apiResponse: apiOrder,
     };
-    writeOrders([storedOrder, ...orders]);
 
-    // Store tracking token for guest orders
+    // Write order and tracking token atomically (best effort)
+    // First, add order to localStorage (avoid duplicates)
+    const orders = readOrders();
+    const existingIndex = orders.findIndex((o) => o.id === order.id);
+    if (existingIndex >= 0) {
+      orders[existingIndex] = storedOrder;
+    } else {
+      orders.unshift(storedOrder);
+    }
+
+    // Write both order and tracking token
+    let ordersWriteSuccess = false;
+    let tokenWriteSuccess = false;
+
+    try {
+      writeOrders(orders);
+      ordersWriteSuccess = true;
+    } catch {
+      // storage full or unavailable - order not persisted
+    }
+
     if (apiOrder.trackingToken) {
-      setTrackingToken(order.id, apiOrder.trackingToken);
+      try {
+        setTrackingTokenInRefs(order.id, apiOrder.trackingToken);
+        tokenWriteSuccess = true;
+      } catch {
+        // storage full or unavailable - token not persisted
+      }
+    } else {
+      // No token to persist - consider this a success for token part
+      tokenWriteSuccess = true;
+    }
+
+    // If order was written but token failed, we have an untrackable order.
+    // This is a partial failure - log for debugging but don't throw (order creation succeeded on backend).
+    if (ordersWriteSuccess && !tokenWriteSuccess && apiOrder.trackingToken) {
+      console.warn(`Order ${order.id} stored locally but tracking token could not be persisted. Order will be untrackable on this device.`);
     }
 
     return order;
   },
 
-  /**
-   * Get the guest tracking token for an order, if available.
-   * Only returns a token for orders placed as a guest on this device.
-   */
   getTrackingToken(orderId: string): string | undefined {
-    return getTrackingToken(orderId);
+    // Attempt migration on first token lookup
+    migrateLegacyTrackingTokens();
+    return getTrackingTokenFromRefs(orderId);
   },
 
-  /** Newest first. For authenticated users, fetches from API with localStorage fallback. */
   async getAll(): Promise<Order[]> {
-    // Try to fetch from API for authenticated users
     const apiOrders = await fetchOrdersFromApi();
     if (apiOrders.length > 0) {
-      // Merge with localStorage orders (for guests), avoiding duplicates by ID
       const localOrders = readOrders();
       const localOrderIds = new Set(localOrders.map((o) => o.id));
       const merged = [...apiOrders, ...localOrders.filter((o) => !localOrderIds.has(o.id))];
       return merged;
     }
-    // Fallback to localStorage for guests or when API fails
     return readOrders();
   },
 
   async getById(id: string, trackingToken?: string): Promise<Order | null> {
-    // First try localStorage (fast, works for guests with local orders)
-    const localOrder = readOrders().find((order) => order.id === id);
-    if (localOrder) return localOrder;
+    const token = trackingToken ?? getTrackingTokenFromRefs(id);
 
-    // If not found locally, try API (for guests with tracking tokens or authenticated users)
-    return fetchOrderFromApi(id, trackingToken);
+    if (token) {
+      const apiOrder = await fetchOrderFromApi(id, token);
+      if (apiOrder) return apiOrder;
+      // API returned 404/403 or other error - don't fall back to stale localStorage
+      return null;
+    }
+
+    // No tracking token available - order cannot be verified with backend
+    // Return null to indicate unverified status rather than stale data
+    return null;
+  },
+
+  getGuestOrderRefs(): GuestOrderRef[] {
+    migrateLegacyTrackingTokens();
+    return readGuestOrderRefs();
+  },
+
+  /** Returns the locally cached order without backend verification. For display-only purposes. */
+  getLocalOrder(id: string): Order | undefined {
+    return readOrders().find((order) => order.id === id);
   },
 };

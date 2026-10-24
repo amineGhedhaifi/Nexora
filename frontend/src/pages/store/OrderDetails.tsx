@@ -1,6 +1,6 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useState } from "react";
-import { ArrowLeft, PackageSearch, Key, XCircle } from "lucide-react";
+import { ArrowLeft, PackageSearch, Key, XCircle, RefreshCw, AlertCircle, WifiOff } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OrderSummary } from "@/components/checkout/OrderSummary";
@@ -53,7 +53,7 @@ function TrackingTokenForm({ onSubmit }: { onSubmit: (token: string) => void }) 
             className="flex-1 font-mono text-sm"
             autoComplete="off"
           />
-          <button type="submit" disabled={!token.trim()} className={buttonVariants({ size: "default" })}>
+          <button type="submit" disabled={!token.trim()} className={buttonVariants({ size: "sm" })}>
             <Key className="size-4" />
           </button>
         </div>
@@ -65,29 +65,81 @@ function TrackingTokenForm({ onSubmit }: { onSubmit: (token: string) => void }) 
   );
 }
 
+function NetworkErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <section className="page-container py-10 sm:py-14">
+      <div className="mx-auto max-w-md text-center">
+        <div className="mx-auto size-16 rounded-full bg-destructive/10 flex items-center justify-center">
+          <WifiOff className="size-8 text-destructive" aria-hidden="true" />
+        </div>
+        <h2 className="mt-5 text-xl font-semibold">Unable to load order</h2>
+        <p className="mt-2 text-muted-foreground">
+          We couldn't reach the server to fetch the latest order details. Please check your connection and try again.
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-6 inline-flex items-center gap-2"
+        >
+          <RefreshCw className="size-4" aria-hidden="true" />
+          <span>Try again</span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function AccessDeniedState({ onSubmitToken }: { onSubmitToken: (token: string) => void }) {
+  return (
+    <section className="page-container py-10 sm:py-14">
+      <div className="mx-auto max-w-md">
+        <EmptyState
+          icon={AlertCircle}
+          title="Unable to access this order"
+          description="The tracking token may be invalid or the order doesn't exist. Please check your token and try again."
+          action={<TrackingTokenForm onSubmit={onSubmitToken} />}
+        />
+      </div>
+    </section>
+  );
+}
+
+interface ApiError extends Error {
+  status?: number;
+  code?: string;
+}
+
 export default function OrderDetails() {
   const { id } = useParams();
-  const [, setSearchParams] = useSearchParams();
-  const { data: order, isPending, isError } = useOrder(id);
-  const { isAuthenticated } = useAuth()
-  const cancelOrder = useCancelOrder()
-  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTrackingToken = searchParams.get("trackingToken") ?? undefined;
+  const { data: order, isPending, isError, error, refetch, isFetching } = useOrder(id);
+  const { isAuthenticated } = useAuth();
+  const cancelOrder = useCancelOrder();
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
-  const canCancel = order?.status === "ordered"
+  const storedTrackingToken = id ? ordersService.getTrackingToken(id) : undefined;
+  const hasTrackingToken = Boolean(storedTrackingToken || urlTrackingToken);
+
+  const canCancel = order?.status === "ordered";
 
   const handleCancel = async () => {
     try {
-      const trackingToken = isAuthenticated ? undefined : ordersService.getTrackingToken(order!.id)
-      await cancelOrder.mutateAsync({ orderId: order!.id, trackingToken })
+      const trackingToken = isAuthenticated ? undefined : ordersService.getTrackingToken(order!.id);
+      await cancelOrder.mutateAsync({ orderId: order!.id, trackingToken });
     } catch (error) {
-      console.error("Failed to cancel order:", error)
+      console.error("Failed to cancel order:", error);
     } finally {
-      setShowCancelDialog(false)
+      setShowCancelDialog(false);
     }
-  }
+  };
 
   const handleTrackingTokenSubmit = (token: string) => {
     setSearchParams({ trackingToken: token }, { replace: true });
+  };
+
+  const handleRetry = () => {
+    refetch();
   };
 
   if (isPending) {
@@ -102,6 +154,18 @@ export default function OrderDetails() {
     );
   }
 
+  if (isError) {
+    const apiError = error as ApiError;
+    const isNetworkError = error instanceof TypeError || apiError.status === 0 || apiError.code === "ECONNABORTED";
+    if (hasTrackingToken && isNetworkError) {
+      return <NetworkErrorState onRetry={handleRetry} />;
+    }
+    if (hasTrackingToken) {
+      return <AccessDeniedState onSubmitToken={handleTrackingTokenSubmit} />;
+    }
+  }
+
+  // Order not found or no tracking token for guest
   if (!order) {
     return (
       <section className="page-container py-10 sm:py-14">
@@ -109,17 +173,21 @@ export default function OrderDetails() {
           <EmptyState
             icon={PackageSearch}
             title="We couldn't find that order"
-            description={isError
-              ? "You don't have access to this order. If you placed this order as a guest, enter your tracking token below."
-              : "Orders are saved on the device you ordered from. If you placed this order as a guest on another device, enter your tracking token below."}
+            description={hasTrackingToken
+              ? "The order was not found. The tracking token may be invalid."
+              : isAuthenticated
+                ? "You don't have access to this order."
+                : "Orders are saved on the device you ordered from. If you placed this order as a guest on another device, enter your tracking token below."}
             action={
-              <TrackingTokenForm orderId={id as string} onSubmit={handleTrackingTokenSubmit} />
+              <TrackingTokenForm onSubmit={handleTrackingTokenSubmit} />
             }
           />
         </div>
       </section>
     );
   }
+
+  const isStaleData = hasTrackingToken && isFetching;
 
   return (
     <section className="page-container py-10 sm:py-14">
@@ -141,6 +209,12 @@ export default function OrderDetails() {
           </div>
           <div className="flex items-center gap-2">
             <OrderStatusBadge status={order.status} />
+            {isStaleData && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <RefreshCw className="size-3 animate-spin" aria-hidden="true" />
+                Updating...
+              </span>
+            )}
             {canCancel && (
               <>
                 <button

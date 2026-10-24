@@ -12,7 +12,7 @@ import { ordersService } from "@/services/orders.service"
 
 const MAX_PREVIEW = 4
 
-export function OrderCard({ order }: { order: Order }) {
+export function OrderCard({ order, isStale = false }: { order: Order; isStale?: boolean }) {
   const unitCount = order.items.reduce((sum, item) => sum + item.quantity, 0)
   const preview = order.items.slice(0, MAX_PREVIEW)
   const extra = order.items.length - preview.length
@@ -38,7 +38,6 @@ export function OrderCard({ order }: { order: Order }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold">
-            {/* Stretched link: the whole card opens the order */}
             <Link to={`/orders/${order.id}`} className="outline-none after:absolute after:inset-0 group-hover:text-link">
               Order {order.id}
             </Link>
@@ -47,7 +46,7 @@ export function OrderCard({ order }: { order: Order }) {
             Placed on {formatDate(order.createdAt, { dateStyle: "medium" })}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        {!isStale && <OrderStatusBadge status={order.status} />}
       </div>
 
       <div className="mt-5 flex items-center justify-between gap-4">
