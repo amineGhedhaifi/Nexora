@@ -71,7 +71,7 @@ export async function createOrder(data, userId) {
             }
         }
         // Create the order and its items in the same transaction.
-        return tx.order.create({
+        const order = await tx.order.create({
             data: {
                 userId: userId ?? null,
                 trackingToken,
@@ -98,6 +98,14 @@ export async function createOrder(data, userId) {
                 },
             },
         });
+        // Create the notification in the same transaction.
+        await tx.notification.create({
+            data: {
+                type: "NEW_ORDER",
+                message: `New order received from ${order.customerName}.`,
+            },
+        });
+        return order;
     });
 }
 export async function getOrderById(orderId, userId, trackingToken) {
@@ -231,6 +239,52 @@ export async function getAdminOrderById(orderId) {
         throw new AppError(404, "Order not found.");
     }
     return order;
+}
+export async function getOrdersByUserId(userId, query) {
+    const { page, limit, status, search } = query;
+    const skip = (page - 1) * limit;
+    const where = {
+        userId,
+        ...(status && { status }),
+        ...(search && {
+            OR: [
+                { customerName: { contains: search, mode: "insensitive" } },
+                { customerPhone: { contains: search } },
+                { id: { contains: search } },
+            ],
+        }),
+    };
+    const [orders, total] = await prisma.$transaction([
+        prisma.order.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+            select: {
+                id: true,
+                status: true,
+                totalAmount: true,
+                customerName: true,
+                customerPhone: true,
+                shippingAddress: true,
+                createdAt: true,
+                updatedAt: true,
+                _count: {
+                    select: { items: true },
+                },
+            },
+        }),
+        prisma.order.count({ where }),
+    ]);
+    return {
+        orders,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
 }
 export async function updateOrderStatus(orderId, data) {
     return prisma.$transaction(async (tx) => {

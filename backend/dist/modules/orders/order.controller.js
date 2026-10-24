@@ -1,5 +1,5 @@
 import { createOrderSchema, orderIdSchema, orderQuerySchema, adminOrderQuerySchema, updateOrderStatusSchema, } from "./order.schema.js";
-import { createOrder, getOrderById, getMyOrders, getAdminOrders, getAdminOrderById, updateOrderStatus, cancelOrder, } from "./order.service.js";
+import { createOrder, getOrderById, getMyOrders, getAdminOrders, getAdminOrderById, getOrdersByUserId, updateOrderStatus, cancelOrder, } from "./order.service.js";
 import { AppError } from "../../utils/app-error.js";
 export async function addOrder(req, res, next) {
     try {
@@ -66,6 +66,17 @@ export async function getAdminOrderByIdController(req, res, next) {
         const { id } = orderIdSchema.parse(req.params);
         const order = await getAdminOrderById(id);
         res.status(200).json({ order });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+export async function getAdminOrdersByUserIdController(req, res, next) {
+    try {
+        const { id } = orderIdSchema.parse(req.params);
+        const query = adminOrderQuerySchema.parse(req.query);
+        const result = await getOrdersByUserId(id, query);
+        res.status(200).json(result);
     }
     catch (error) {
         next(error);

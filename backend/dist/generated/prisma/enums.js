@@ -21,6 +21,10 @@ export const ContactTopic = {
     TECHNICAL_ISSUE: 'TECHNICAL_ISSUE',
     OTHER: 'OTHER'
 };
+export const NotificationType = {
+    NEW_ORDER: 'NEW_ORDER',
+    NEW_MESSAGE: 'NEW_MESSAGE'
+};
 export const OrderStatus = {
     PENDING: 'PENDING',
     CONFIRMED: 'CONFIRMED',

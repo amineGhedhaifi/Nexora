@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useLocation, NavLink } from "react-router-dom";
 import { ChevronLeft, ChevronRight, User, LogOut, LayoutDashboard, Package, Tag, ShoppingCart, Mail, Users, X } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";

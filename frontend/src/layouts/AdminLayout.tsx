@@ -1,7 +1,8 @@
 import { Outlet } from "react-router-dom";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { AdminSidebarProvider, useAdminSidebar } from "@/hooks/useAdminSidebar";
+import { AdminSidebarProvider } from "@/hooks/AdminSidebarProvider";
+import { useAdminSidebar } from "@/hooks/useAdminSidebar";
 
 function AdminLayoutContent() {
   const { collapsed } = useAdminSidebar();

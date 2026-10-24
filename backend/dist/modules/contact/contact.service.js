@@ -1,21 +1,30 @@
 import { prisma } from "../../lib/prisma.js";
 export async function createContactMessage(data) {
-    return prisma.contactMessage.create({
-        data: {
-            name: data.name,
-            email: data.email,
-            topic: data.topic,
-            message: data.message,
-        },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            topic: true,
-            message: true,
-            status: true,
-            createdAt: true,
-        },
+    return prisma.$transaction(async (tx) => {
+        const contactMessage = await tx.contactMessage.create({
+            data: {
+                name: data.name,
+                email: data.email,
+                topic: data.topic,
+                message: data.message,
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                topic: true,
+                message: true,
+                status: true,
+                createdAt: true,
+            },
+        });
+        await tx.notification.create({
+            data: {
+                type: "NEW_MESSAGE",
+                message: `New contact message from ${contactMessage.name}.`,
+            },
+        });
+        return contactMessage;
     });
 }
 export async function getAllContactMessages() {

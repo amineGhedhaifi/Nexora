@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { addOrder, getOrder, getMyOrderHistory, getAdminOrdersController, getAdminOrderByIdController, updateOrderStatusController, cancelOrderController, } from "./order.controller.js";
+import { addOrder, getOrder, getMyOrderHistory, getAdminOrdersController, getAdminOrderByIdController, getAdminOrdersByUserIdController, updateOrderStatusController, cancelOrderController, } from "./order.controller.js";
 import { optionalAuthenticate } from "../../middleware/optional-authenticate.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { authorize } from "../../middleware/authorize.js";
 const router = Router();
 // Admin routes — register before /:id.
 router.get("/admin", authenticate, authorize("ADMIN"), getAdminOrdersController);
+router.get("/admin/user/:id", authenticate, authorize("ADMIN"), getAdminOrdersByUserIdController);
 router.get("/admin/:id", authenticate, authorize("ADMIN"), getAdminOrderByIdController);
 router.patch("/admin/:id/status", authenticate, authorize("ADMIN"), updateOrderStatusController);
 // Customer and guest routes.

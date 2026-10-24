@@ -1,15 +1,5 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-
-interface AdminSidebarContextType {
-  collapsed: boolean;
-  setCollapsed: (collapsed: boolean) => void;
-  mobileOpen: boolean;
-  setMobileOpen: (open: boolean) => void;
-  toggleCollapsed: () => void;
-  closeMobile: () => void;
-}
-
-const AdminSidebarContext = createContext<AdminSidebarContextType | null>(null);
+import { useState, useEffect, type ReactNode } from "react";
+import { AdminSidebarContext } from "./AdminSidebarContext";
 
 export function AdminSidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -35,12 +25,4 @@ export function AdminSidebarProvider({ children }: { children: ReactNode }) {
       {children}
     </AdminSidebarContext.Provider>
   );
-}
-
-export function useAdminSidebar() {
-  const context = useContext(AdminSidebarContext);
-  if (!context) {
-    throw new Error("useAdminSidebar must be used within an AdminSidebarProvider");
-  }
-  return context;
 }
