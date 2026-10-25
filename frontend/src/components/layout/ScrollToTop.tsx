@@ -10,4 +10,6 @@ export function ScrollToTop() {
     }
     window.scrollTo(0, 0);
   }, [pathname, hash]);
+
+  return null;
 }

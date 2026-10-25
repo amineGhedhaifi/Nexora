@@ -1,11 +1,11 @@
 import { apiRequest, ApiError, tokenStore } from "./api";
 
-interface OrderItemInput {
+export interface OrderItemInput {
   productId: string;
   quantity: number;
 }
 
-interface CreateOrderInput {
+export interface CreateOrderInput {
   customerName: string;
   customerPhone: string;
   shippingAddress: string;

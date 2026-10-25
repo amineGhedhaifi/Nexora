@@ -90,7 +90,7 @@ export function AdminSidebar() {
                 <li>
                   <NavLink
                     to="/admin/profile"
-                    className={({ isActive }) =>
+                    className={({ isActive }: { isActive: boolean }) =>
                       cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
@@ -99,10 +99,10 @@ export function AdminSidebar() {
                           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                       )
                     }
-                    aria-current={({ isActive }) => (isActive ? "page" : undefined)}
+                    aria-current={location.pathname === "/admin/profile" ? "page" : undefined}
                     onClick={() => setMobileOpen(false)}
                   >
-                    <User className={cn("size-5 shrink-0", ({ isActive }) => (isActive ? "text-primary-foreground" : ""))} aria-hidden="true" />
+                    <User className={cn("size-5 shrink-0", location.pathname === "/admin/profile" && "text-primary-foreground")} aria-hidden="true" />
                     <span>Profile</span>
                   </NavLink>
                 </li>

@@ -76,10 +76,13 @@ function toProduct(api: ApiProduct): Product {
           id: api.category.id,
           name: api.category.name,
           slug: api.category.slug,
+          description: "",
         }
       : null,
     createdAt,
     isNew: age >= 0 && age < NEW_PRODUCT_DAYS * 24 * 60 * 60 * 1000,
+    featured: false,
+    isBestSeller: false,
   };
 }
 

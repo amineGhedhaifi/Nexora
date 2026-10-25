@@ -30,9 +30,9 @@ export default function Login() {
   const signIn = useMutation({
     mutationFn: ({ email, password }: LoginFormValues) =>
       login(email, password),
-    onSuccess: (data) => {
+    onSuccess: (user) => {
       // Redirect admin users to admin dashboard
-      if (data.user?.role === "ADMIN") {
+      if (user?.role === "ADMIN") {
         navigate("/admin", { replace: true });
       } else {
         navigate(from, { replace: true });

@@ -22,7 +22,7 @@ app.use(cors({
     origin: "http://localhost:3000",
     credentials: true,
 }));
-app.use("/uploads/products", express.static(path.resolve(process.cwd(), "uploads", "products")));
+app.use("/uploads/products", express.static(path.resolve(process.cwd(), "backend", "uploads", "products")));
 app.use(express.json());
 app.use(cookieParser());
 app.get("/api/health", (_req, res) => {
@@ -41,5 +41,17 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/notifications", notificationRoutes);
+// Serve the built React frontend in production.
+if (process.env.NODE_ENV === "production") {
+    const frontendDistPath = path.resolve(process.cwd(), "frontend", "dist");
+    app.use(express.static(frontendDistPath));
+    // Let React Router handle frontend routes.
+    app.get("/{*path}", (_req, res, next) => {
+        res.sendFile(path.join(frontendDistPath, "index.html"), (err) => {
+            if (err)
+                next(err);
+        });
+    });
+}
 app.use(errorHandler);
 export default app;

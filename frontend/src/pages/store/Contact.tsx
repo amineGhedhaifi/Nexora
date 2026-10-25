@@ -11,6 +11,7 @@ import { contactDetails } from "@/data/contact";
 import { useSendContactMessage } from "@/hooks/useSendContactMessage";
 import {
   contactService,
+  type ContactTopic,
   getValidationErrors,
   isContactValidationError,
 } from "@/services/contact.service";
@@ -215,7 +216,7 @@ export default function Contact() {
                         variant="ghost"
                         size="sm"
                         className="p-0 h-auto text-sm"
-                        onClick={refetchTopics}
+                        onClick={() => refetchTopics()}
                       >
                         Retry
                       </Button>

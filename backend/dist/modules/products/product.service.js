@@ -17,6 +17,7 @@ const productSelect = {
             id: true,
             name: true,
             slug: true,
+            description: true,
         },
     },
 };

@@ -1,6 +1,6 @@
-import type { Category } from "@/types/product"
+import type { ProductCategory } from "@/types/product"
 
-export const categories: Category[] = [
+export const categories: ProductCategory[] = [
   {
     id: "cat_electronics",
     name: "Electronics",

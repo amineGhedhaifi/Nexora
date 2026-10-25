@@ -1,13 +1,14 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { PageSpinner } from "@/components/shared/PageSpinner";
 import { useAuth } from "@/hooks/useAuth";
+import type { ReactNode } from "react";
 
 /**
  * Wrap pages that need a signed-in user:
  *   { element: <ProtectedRoute />, children: [{ path: "account", Component: Account }] }
  * This is for user experience only. The API must enforce access on every endpoint.
  */
-export function ProtectedRoute() {
+export function ProtectedRoute({ children }: { children?: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
@@ -24,5 +25,5 @@ export function ProtectedRoute() {
     );
   }
 
-  return <Outlet />;
+  return children ?? <Outlet />;
 }

@@ -31,7 +31,13 @@ import AdminProfile from "@/pages/admin/Profile";
 function withClientRoute(Component: React.ComponentType, protectedRoute = false) {
   return () => (
     <ClientRoute>
-      {protectedRoute ? <ProtectedRoute><Component /></ProtectedRoute> : <Component />}
+      {protectedRoute ? (
+        <ProtectedRoute>
+          <Component />
+        </ProtectedRoute>
+      ) : (
+        <Component />
+      )}
     </ClientRoute>
   );
 }
