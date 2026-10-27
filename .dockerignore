@@ -1,0 +1,38 @@
+# Git
+
+.git
+.gitignore
+
+# Environment and secrets
+
+.env
+.env.\*
+!.env.example
+
+# Dependencies
+
+node_modules
+\*\*/node_modules
+
+# Build artifacts
+
+frontend/dist
+backend/dist
+backend/src/generated/prisma
+
+# Local development files
+
+**/.vite
+**/coverage \*_/_.log
+.DS_Store
+
+# Editor configuration
+
+.vscode
+.idea
+
+# Keep existing uploaded images out of the image build context.
+
+# They will be stored in a persistent volume instead.
+
+backend/uploads
