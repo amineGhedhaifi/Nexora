@@ -1,19 +1,19 @@
-import { Link } from "react-router-dom"
-import { motion } from "motion/react"
-import { Badge } from "@/components/ui/badge"
-import { heroTiles, type HeroTile } from "@/data/hero"
-import { formatPrice } from "@/lib/format"
-import { cn } from "@/lib/utils"
+import { Link } from "react-router-dom";
+import { motion } from "motion/react";
+import { Badge } from "@/components/ui/badge";
+import { heroTiles, type HeroTile } from "@/data/hero";
+import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface TileProps {
-  tile: HeroTile
-  index: number
-  className?: string
-  featured?: boolean
+  tile: HeroTile;
+  index: number;
+  className?: string;
+  featured?: boolean;
 }
 
 function Tile({ tile, index, className, featured = false }: TileProps) {
-  const Icon = tile.icon
+  const Icon = tile.icon;
 
   return (
     <motion.div
@@ -32,17 +32,27 @@ function Tile({ tile, index, className, featured = false }: TileProps) {
             src={tile.image}
             alt={tile.name}
             loading={featured ? "eager" : "lazy"}
+            fetchPriority={featured ? "high" : "auto"}
             decoding="async"
             className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="absolute inset-0 grid place-items-center bg-linear-to-br from-accent via-muted to-secondary">
-            <Icon className={cn("text-primary/40", featured ? "size-24" : "size-14")} aria-hidden="true" />
+            <Icon
+              className={cn(
+                "text-primary/40",
+                featured ? "size-24" : "size-14",
+              )}
+              aria-hidden="true"
+            />
           </div>
         )}
 
         {tile.badge && (
-          <Badge variant="primary" className="absolute left-3 top-3 bg-background/90 shadow-sm backdrop-blur">
+          <Badge
+            variant="primary"
+            className="absolute left-3 top-3 bg-background/90 shadow-sm backdrop-blur"
+          >
             {tile.badge}
           </Badge>
         )}
@@ -50,17 +60,21 @@ function Tile({ tile, index, className, featured = false }: TileProps) {
         <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3 rounded-xl border bg-background/85 p-3 backdrop-blur-md">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{tile.name}</p>
-            {featured && <p className="text-xs text-muted-foreground">{tile.category}</p>}
+            {featured && (
+              <p className="text-xs text-muted-foreground">{tile.category}</p>
+            )}
           </div>
-          <p className="shrink-0 text-sm font-bold tabular-nums text-link">{formatPrice(tile.price)}</p>
+          <p className="shrink-0 text-sm font-bold tabular-nums text-link">
+            {formatPrice(tile.price)}
+          </p>
         </div>
       </Link>
     </motion.div>
-  )
+  );
 }
 
 export function HeroCollage() {
-  const [main, ...rest] = heroTiles
+  const [main, ...rest] = heroTiles;
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:h-[32rem] lg:grid-cols-5 lg:grid-rows-2">
@@ -79,5 +93,5 @@ export function HeroCollage() {
         />
       ))}
     </div>
-  )
+  );
 }
