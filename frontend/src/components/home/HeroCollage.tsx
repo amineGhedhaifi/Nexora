@@ -31,6 +31,8 @@ function Tile({ tile, index, className, featured = false }: TileProps) {
           <img
             src={tile.image}
             alt={tile.name}
+            width={featured ? 1200 : 600}
+            height={featured ? 800 : 400}
             loading={featured ? "eager" : "lazy"}
             fetchPriority={featured ? "high" : "auto"}
             decoding="async"
