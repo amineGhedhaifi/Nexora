@@ -4,6 +4,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "node:path";
 import { errorHandler } from "./middleware/error-handler.js";
+import compression from "compression";
 
 import authRoutes from "./modules/auth/auth.routes.js";
 import categoryRoutes from "./modules/categories/category.routes.js";
@@ -38,6 +39,7 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(compression());
 
 app.get("/api/health", (_req, res) => {
   res.status(200).json({
