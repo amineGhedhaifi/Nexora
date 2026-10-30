@@ -127,8 +127,8 @@ export default function OrderDetails() {
     try {
       const trackingToken = isAuthenticated ? undefined : ordersService.getTrackingToken(order!.id);
       await cancelOrder.mutateAsync({ orderId: order!.id, trackingToken });
-    } catch (error) {
-      console.error("Failed to cancel order:", error);
+    } catch {
+      // Intentionally empty; errors are silently swallowed in production.
     } finally {
       setShowCancelDialog(false);
     }

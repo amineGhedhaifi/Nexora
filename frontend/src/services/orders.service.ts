@@ -236,7 +236,7 @@ export const ordersService = {
     // If order was written but token failed, we have an untrackable order.
     // This is a partial failure - log for debugging but don't throw (order creation succeeded on backend).
     if (ordersWriteSuccess && !tokenWriteSuccess && apiOrder.trackingToken) {
-      console.warn(`Order ${order.id} stored locally but tracking token could not be persisted. Order will be untrackable on this device.`);
+      // Intentionally empty; untrackable orders are accepted as partial success.
     }
 
     return order;

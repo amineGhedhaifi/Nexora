@@ -123,9 +123,8 @@ function ContactMessageDetailsDialogContent({
       setCopied(label);
       if (copyTimer.current) clearTimeout(copyTimer.current);
       copyTimer.current = setTimeout(() => setCopied(null), 2000);
-    } catch (err) {
+    } catch {
       // Clipboard is unavailable on insecure origins and some mobile webviews.
-      console.error("Failed to copy to clipboard:", err);
       setError(
         "Couldn't copy to the clipboard. Select the text and copy it manually.",
       );
@@ -143,8 +142,7 @@ function ContactMessageDetailsDialogContent({
         });
       setLocalMessage(updatedMessage);
       onStatusUpdate?.(updatedMessage);
-    } catch (err) {
-      console.error("Failed to update message status:", err);
+    } catch {
       setError("Couldn't update the status. Try again.");
     } finally {
       setUpdatingTo(null);

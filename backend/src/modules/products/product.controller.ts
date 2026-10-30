@@ -108,7 +108,7 @@ export async function addProduct(
     });
   } catch (error) {
     if (imageUrl) {
-      await deleteProductImage(imageUrl).catch(console.error);
+      await deleteProductImage(imageUrl);
     }
 
     next(error);
@@ -161,7 +161,7 @@ export async function editProduct(
     const result = await updateProduct(id, updateData);
 
     if (newImageUrl) {
-      await deleteProductImage(result.oldImageUrl).catch(console.error);
+      await deleteProductImage(result.oldImageUrl);
     }
 
     res.status(200).json({
@@ -170,7 +170,7 @@ export async function editProduct(
     });
   } catch (error) {
     if (newImageUrl) {
-      await deleteProductImage(newImageUrl).catch(console.error);
+      await deleteProductImage(newImageUrl);
     }
 
     next(error);
@@ -187,9 +187,7 @@ export async function removeProduct(
 
     const imageUrl = await deleteProduct(id);
 
-    await deleteProductImage(imageUrl).catch((error) => {
-      console.error("Failed to delete product image:", error);
-    });
+    await deleteProductImage(imageUrl);
 
     res.status(200).json({
       message: "Product deleted successfully.",

@@ -83,8 +83,8 @@ export default function ProductsPage() {
       setCategories(
         cats.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
       );
-    } catch (err) {
-      console.error("Failed to fetch categories:", err);
+    } catch {
+      // Intentionally empty; errors are silently swallowed in production.
     }
   }, []);
 

@@ -35,12 +35,12 @@ function playNotificationSound(): void {
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
         if (err.name !== "AbortError") {
-          console.debug("Notification sound playback blocked:", err.message);
+          // Intentionally empty.
         }
       });
     }
-  } catch (err) {
-    console.debug("Notification sound error:", err);
+  } catch {
+    // Intentionally empty; errors are silently swallowed in production.
   }
 }
 
@@ -88,8 +88,8 @@ export function useNotificationPolling(
           queryClient.invalidateQueries({ queryKey: UNREAD_COUNT_QUERY_KEY });
         }
       }
-    } catch (err) {
-      console.debug("Notification polling error:", err);
+    } catch {
+      // Intentionally empty; errors are silently swallowed in production.
     } finally {
       isPollingRef.current = false;
     }
