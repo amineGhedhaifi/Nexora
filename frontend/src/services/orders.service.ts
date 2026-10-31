@@ -269,8 +269,11 @@ export const ordersService = {
       return null;
     }
 
-    // No tracking token available - order cannot be verified with backend
-    // Return null to indicate unverified status rather than stale data
+    // No tracking token - attempt an authenticated lookup. The backend resolves
+    // the order via the userId on the authenticated request. Guests without a
+    // token receive a 401 from the backend, which surfaces as null here.
+    const apiOrder = await fetchOrderFromApi(id);
+    if (apiOrder) return apiOrder;
     return null;
   },
 

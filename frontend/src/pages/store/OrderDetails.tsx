@@ -89,21 +89,6 @@ function NetworkErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-function AccessDeniedState({ onSubmitToken }: { onSubmitToken: (token: string) => void }) {
-  return (
-    <section className="page-container py-10 sm:py-14">
-      <div className="mx-auto max-w-md">
-        <EmptyState
-          icon={AlertCircle}
-          title="Unable to access this order"
-          description="The tracking token may be invalid or the order doesn't exist. Please check your token and try again."
-          action={<TrackingTokenForm onSubmit={onSubmitToken} />}
-        />
-      </div>
-    </section>
-  );
-}
-
 interface ApiError extends Error {
   status?: number;
   code?: string;
@@ -157,11 +142,21 @@ export default function OrderDetails() {
   if (isError) {
     const apiError = error as ApiError;
     const isNetworkError = error instanceof TypeError || apiError.status === 0 || apiError.code === "ECONNABORTED";
-    if (hasTrackingToken && isNetworkError) {
+    if (isNetworkError) {
       return <NetworkErrorState onRetry={handleRetry} />;
     }
-    if (hasTrackingToken) {
-      return <AccessDeniedState onSubmitToken={handleTrackingTokenSubmit} />;
+    if (!isAuthenticated) {
+      return (
+        <section className="page-container py-10 sm:py-14">
+          <div className="mx-auto max-w-md">
+            <EmptyState
+              icon={AlertCircle}
+              title="Unable to access this order"
+              description="We couldn't find your order. Please make sure you're on the device you used to place the order."
+            />
+          </div>
+        </section>
+      );
     }
   }
 
@@ -173,13 +168,16 @@ export default function OrderDetails() {
           <EmptyState
             icon={PackageSearch}
             title="We couldn't find that order"
-            description={hasTrackingToken
-              ? "The order was not found. The tracking token may be invalid."
-              : isAuthenticated
+            description={
+              isAuthenticated
                 ? "You don't have access to this order."
-                : "Orders are saved on the device you ordered from. If you placed this order as a guest on another device, enter your tracking token below."}
+                : hasTrackingToken
+                  ? "The order was not found. The tracking token may be invalid."
+                  : "Orders are saved on the device you ordered from. If you placed this order as a guest on another device, enter your tracking token below."}
             action={
-              <TrackingTokenForm onSubmit={handleTrackingTokenSubmit} />
+              (!isAuthenticated && !hasTrackingToken) ? (
+                <TrackingTokenForm onSubmit={handleTrackingTokenSubmit} />
+              ) : undefined
             }
           />
         </div>
